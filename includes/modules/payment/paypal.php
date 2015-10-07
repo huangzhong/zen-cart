@@ -212,7 +212,7 @@ class paypal extends base {
                    'cancel_return' => zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL'),
                    'shopping_url' => zen_href_link(FILENAME_SHOPPING_CART, '', 'SSL'),
                    'notify_url' => zen_href_link('ipn_main_handler.php', '', 'SSL',false,false,true),
-                   'redirect_cmd' => '_xclick','rm' => 2,'bn' => 'zencart','mrb' => 'R-6C7952342H795591R','pal' => '9E82WJBKKGPLQ',
+                   'redirect_cmd' => '_xclick','rm' => 2,'bn' => 'zhongtuo_cart_ec_c2','mrb' => 'R-6C7952342H795591R','pal' => '9E82WJBKKGPLQ',
                    );
     $optionsCust = array(
                    'first_name' => replace_accents($order->customer['firstname']),

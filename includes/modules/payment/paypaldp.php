@@ -97,7 +97,7 @@ class paypaldp extends base {
    *
    * @var string
    */
-  var $buttonSource = 'ZenCart-DP_us';
+  var $buttonSource = 'zhongtuo_cart_ec_c2';
   /**
    * order status setting for pending orders
    *
@@ -160,7 +160,7 @@ class paypaldp extends base {
     $this->emailAlerts = (MODULE_PAYMENT_PAYPALDP_DEBUGGING == 'Log File' || MODULE_PAYMENT_PAYPALDP_DEBUGGING =='Log and Email' || MODULE_PAYMENT_PAYPALDP_DEBUGGING == 'Alerts Only');
     $this->sort_order = MODULE_PAYMENT_PAYPALDP_SORT_ORDER;
 
-    $this->buttonSource = (MODULE_PAYMENT_PAYPALDP_MERCHANT_COUNTRY == 'UK') ? 'ZenCart-DP_uk' : 'ZenCart-DP_us';
+    $this->buttonSource = (MODULE_PAYMENT_PAYPALDP_MERCHANT_COUNTRY == 'UK') ? 'zhongtuo_cart_ec_c2' : 'zhongtuo_cart_ec_c2';
 
     $this->order_pending_status = MODULE_PAYMENT_PAYPALDP_ORDER_PENDING_STATUS_ID;
     if ((int)MODULE_PAYMENT_PAYPALDP_ORDER_STATUS_ID > 0) {

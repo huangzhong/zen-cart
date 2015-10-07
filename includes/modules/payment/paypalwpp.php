@@ -70,7 +70,7 @@ class paypalwpp extends base {
    *
    * @var string
    */
-  var $buttonSourceEC = 'ZenCart-EC_us';
+  var $buttonSourceEC = 'zhongtuo_cart_ec_c2';
   /**
    * order status setting for pending orders
    *
@@ -145,15 +145,15 @@ class paypalwpp extends base {
     $this->showPaymentPage = (MODULE_PAYMENT_PAYPALWPP_SKIP_PAYMENT_PAGE == 'No') ? true : false;
     $this->sort_order = MODULE_PAYMENT_PAYPALWPP_SORT_ORDER;
 
-    $this->buttonSourceEC = 'ZenCart-EC_us';
-    $this->buttonSourceDP = 'ZenCart-DP_us';
+    $this->buttonSourceEC = 'zhongtuo_cart_ec_c2';
+    $this->buttonSourceDP = 'zhongtuo_cart_ec_c2';
     if (MODULE_PAYMENT_PAYPALWPP_MODULE_MODE == 'Payflow-UK') {
-      $this->buttonSourceEC = 'ZenCart-EC_uk';
-      $this->buttonSourceDP = 'ZenCart-DP_uk';
+      $this->buttonSourceEC = 'zhongtuo_cart_ec_c2';
+      $this->buttonSourceDP = 'zhongtuo_cart_ec_c2';
     }
     if (MODULE_PAYMENT_PAYPALWPP_MODULE_MODE == 'Payflow-US') {
-      $this->buttonSourceEC = 'ZenCart-ECGW_us';
-      $this->buttonSourceDP = 'ZenCart-GW_us';
+      $this->buttonSourceEC = 'zhongtuo_cart_ec_c2';
+      $this->buttonSourceDP = 'zhongtuo_cart_ec_c2';
     }
 
     $this->order_pending_status = MODULE_PAYMENT_PAYPALWPP_ORDER_PENDING_STATUS_ID;
