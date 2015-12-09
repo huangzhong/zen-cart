@@ -13,10 +13,10 @@
     global $logger;
 
 // clean up URL before executing it
-    while (strstr($url, '&&')) $url = str_replace('&&', '&', $url);
-    while (strstr($url, '&amp;&amp;')) $url = str_replace('&amp;&amp;', '&amp;', $url);
+    $url = preg_replace('/&{2,}/', '&', $url);
+    $url = preg_replace('/(&amp;)+/', '&amp;', $url);
     // header locates should not have the &amp; in the address it breaks things
-    while (strstr($url, '&amp;')) $url = str_replace('&amp;', '&', $url);
+    $url = str_replace('&amp;', '&', $url);
 
     if (STORE_PAGE_PARSE_TIME == 'true') {
       if (!is_object($logger)) $logger = new logger;
@@ -134,8 +134,8 @@
         }
       }
     }
-    while (strstr($get_url, '&&')) $get_url = str_replace('&&', '&', $get_url);
-    while (strstr($get_url, '&amp;&amp;')) $get_url = str_replace('&amp;&amp;', '&amp;', $get_url);
+    $get_url = preg_replace('/&{2,}/', '&', $get_url);
+    $get_url = preg_replace('/(&amp;)+/', '&amp;', $get_url);
 
     return $get_url;
   }
@@ -438,7 +438,7 @@
         return false;
       }
     } else {
-      if ( (is_string($value) || is_int($value)) && ($value != '') && ($value != 'NULL') && (strlen(trim($value)) > 0)) {
+      if (($value != '') && (strtolower($value) != 'null') && (strlen(trim($value)) > 0)) {
         return true;
       } else {
         return false;
@@ -751,18 +751,6 @@
 
 
 ////
-// Wrapper for class_exists() function
-// This function is not available in all PHP versions so we test it before using it.
-  function zen_class_exists($class_name) {
-    if (function_exists('class_exists')) {
-      return class_exists($class_name);
-    } else {
-      return true;
-    }
-  }
-
-
-////
 // Count how many products exist in a category
 // TABLES: products, products_to_categories, categories
   function zen_products_in_category_count($categories_id, $include_deactivated = false, $include_child = true, $limit = false) {
@@ -987,7 +975,7 @@
 // Function to read in text area in admin
  function zen_cfg_textarea_small($text, $key = '') {
     $name = (($key) ? 'configuration[' . $key . ']' : 'configuration_value');
-    return zen_draw_textarea_field($name, false, 35, 1, htmlspecialchars($text, ENT_COMPAT, CHARSET, FALSE));
+    return zen_draw_textarea_field($name, false, 35, 1, htmlspecialchars($text, ENT_COMPAT, CHARSET, FALSE), 'class="noEditor"');
   }
 
 
@@ -1013,6 +1001,21 @@
       $editors_pulldown[] = array('id' => $key, 'text' => $value['desc']);
     }
     return zen_draw_pull_down_menu($name, $editors_pulldown, $html_editor);
+  }
+
+  function zen_cfg_pull_down_exchange_rate_sources($source, $key = '') {
+    $name = (($key) ? 'configuration[' . $key . ']' : 'configuration_value');
+    $pulldown = array();
+    $pulldown[] = array('id' => TEXT_NONE, 'text' => TEXT_NONE);
+    $funcs = get_defined_functions();
+    $funcs = $funcs['user'];
+    sort($funcs);
+    foreach ($funcs as $func) {
+      if (preg_match('/quote_(.*)_currency/', $func, $regs)) {
+        $pulldown[] = array('id' => $regs[1], 'text' => $regs[1]);
+      }
+    }
+    return zen_draw_pull_down_menu($name, $pulldown, $source);
   }
 
   function zen_cfg_password_input($value, $key = '') {
@@ -1111,14 +1114,26 @@
       $indsize += $result->fields['Index_length'];
       $result->MoveNext();
     }
-    $mysql_in_strict_mode = false;
-    $result = $db->Execute("SHOW VARIABLES LIKE 'sql\_mode'");
-    while (!$result->EOF) {
-      if (strstr($result->fields['Value'], 'strict_')) $mysql_in_strict_mode = true;
-      $result->MoveNext();
-    }
 
-    $db_query = $db->Execute("select now() as datetime");
+    $strictmysql = false;
+    $mysql_mode = '';
+    $result = $db->Execute("SHOW VARIABLES LIKE 'sql\_mode'");
+    if (!$result->EOF) {
+      $mysql_mode = $result->fields['Value'];
+      if (strstr($result->fields['Value'], 'strict_')) $strictmysql = true;
+    }
+    $mysql_slow_query_log_status = '';
+    $result = $db->Execute("SHOW VARIABLES LIKE 'slow\_query\_log'");
+    if (!$result->EOF) {
+      $mysql_slow_query_log_status = $result->fields['Value'];
+    }
+    $mysql_slow_query_log_file = '';
+    $result = $db->Execute("SHOW VARIABLES LIKE 'slow\_query\_log\_file'");
+    if (!$result->EOF) {
+      $mysql_slow_query_log_file = $result->fields['Value'];
+    }
+    $result = $db->Execute("select now() as datetime");
+    $mysql_date = $result->fields['datetime'];
 
     $errnum = 0;
     $system = $host = $kernel = $output = '';
@@ -1158,15 +1173,17 @@
                  'db_server' => DB_SERVER,
                  'db_ip' => gethostbyname(DB_SERVER),
                  'db_version' => 'MySQL ' . $db->get_server_info(),
-                 'db_date' => zen_datetime_short($db_query->fields['datetime']),
+                 'db_date' => zen_datetime_short($mysql_date),
                  'php_memlimit' => @ini_get('memory_limit'),
-                 'php_safemode' => version_compare(PHP_VERSION, 5.4, '<') ? strtolower(@ini_get('safe_mode')) : '',
                  'php_file_uploads' => strtolower(@ini_get('file_uploads')),
                  'php_uploadmaxsize' => @ini_get('upload_max_filesize'),
                  'php_postmaxsize' => @ini_get('post_max_size'),
                  'database_size' => $datsize,
                  'index_size' => $indsize,
-                 'mysql_strict_mode' => $mysql_in_strict_mode,
+                 'mysql_strict_mode' => $strictmysql,
+                 'mysql_mode' => $mysql_mode,
+                 'mysql_slow_query_log_status' => $mysql_slow_query_log_status,
+                 'mysql_slow_query_log_file' => $mysql_slow_query_log_file,
                  );
   }
 
@@ -1257,7 +1274,8 @@
 
   function zen_remove_category($category_id) {
     if ((int)$category_id == 0) return;
-    global $db;
+    global $db, $zco_notifier;
+    $zco_notifier->notify('NOTIFIER_ADMIN_ZEN_REMOVE_CATEGORY', array(), $category_id);
 
     // delete from salemaker - sale_categories_selected
     $chk_sale_categories_selected = $db->Execute("select * from " . TABLE_SALEMAKER_SALES . "
@@ -1417,7 +1435,9 @@ while (!$chk_sale_categories_all->EOF) {
   }
 
   function zen_remove_product($product_id, $ptc = 'true') {
-    global $db;
+    global $db, $zco_notifier;
+    $zco_notifier->notify('NOTIFIER_ADMIN_ZEN_REMOVE_PRODUCT', array(), $product_id, $ptc);
+
     $product_image = $db->Execute("select products_image
                                    from " . TABLE_PRODUCTS . "
                                    where products_id = '" . (int)$product_id . "'");
@@ -1495,11 +1515,16 @@ while (!$chk_sale_categories_all->EOF) {
     $db->Execute("delete from " . TABLE_COUPON_RESTRICT . "
                   where product_id = '" . (int)$product_id . "'");
 
+    $db->Execute("delete from " . TABLE_PRODUCTS_NOTIFICATIONS . "
+                  where products_id = '" . (int)$product_id . "'");
+
     zen_record_admin_activity('Deleted product ' . (int)$product_id . ' from database via admin console.', 'warning');
   }
 
   function zen_products_attributes_download_delete($product_id) {
-    global $db;
+    global $db, $zco_notifier;
+    $zco_notifier->notify('NOTIFIER_ADMIN_ZEN_PRODUCTS_ATTRIBUTES_DOWNLOAD_DELETE', array(), $product_id);
+
   // remove downloads if they exist
     $remove_downloads= $db->Execute("select products_attributes_id from " . TABLE_PRODUCTS_ATTRIBUTES . " where products_id= '" . (int)$product_id . "'");
     while (!$remove_downloads->EOF) {
@@ -1509,7 +1534,8 @@ while (!$chk_sale_categories_all->EOF) {
   }
 
   function zen_remove_order($order_id, $restock = false) {
-    global $db;
+    global $db, $zco_notifier;
+    $zco_notifier->notify('NOTIFIER_ADMIN_ZEN_REMOVE_ORDER', array(), $order_id, $restock);
     if ($restock == 'on') {
       $order = $db->Execute("select products_id, products_quantity
                              from " . TABLE_ORDERS_PRODUCTS . "
@@ -1897,28 +1923,39 @@ while (!$chk_sale_categories_all->EOF) {
     return $tmp_array;
   }
 ////
-// Create a Coupon Code. length may be between 1 and 16 Characters
-// $salt needs some thought.
-
-  function create_coupon_code($salt="secret", $length=SECURITY_CODE_LENGTH) {
+/**
+ * Create a Coupon Code. Returns blank if cannot generate a unique code using the passed criteria.
+ * @param string $salt - this is an optional string to help seed the random code with greater entropy
+ * @param int $length - this is the desired length of the generated code
+ * @param string $prefix - include a prefix string if you want to force the generated code to start with a specific string
+ * @return string (new coupon code) (will be blank if the function failed)
+ */
+  function create_coupon_code($salt="secret", $length=SECURITY_CODE_LENGTH, $prefix = '') {
     global $db;
-    $ccid = md5(uniqid("","salt"));
-    $ccid .= md5(uniqid("","salt"));
-    $ccid .= md5(uniqid("","salt"));
-    $ccid .= md5(uniqid("","salt"));
+    $length = (int)$length;
+    static $max_db_length;
+    if (!isset($max_db_length)) $max_db_length = zen_field_length(TABLE_COUPONS, 'coupon_code');  // schema is normally max 32 chars for this field
+    if ($length > $max_db_length) $length = $max_db_length;
+    if (strlen($prefix) > $max_db_length) return ''; // if prefix is already too long for the db, we can't generate a new code
+    if (strlen($prefix) + (int)$length > $max_db_length) $length = $max_db_length - strlen($prefix);
+    if ($length < 4) return ''; // if the recalculated length (esp in respect to prefixes) is less than 4 (for very basic entropy) then abort
+    $ccid = md5(uniqid("",$salt));
+    $ccid .= md5(uniqid("",$salt));
+    $ccid .= md5(uniqid("",$salt));
+    $ccid .= md5(uniqid("",$salt));
     srand((double)microtime()*1000000); // seed the random number generator
-    $random_start = @rand(0, (128-$length));
     $good_result = 0;
     while ($good_result == 0) {
-      $id1=substr($ccid, $random_start,$length);
+      $random_start = @rand(0, (128-$length));
+      $id1=substr($ccid, $random_start, $length);
       $query = $db->Execute("select coupon_code
                              from " . TABLE_COUPONS . "
-                             where coupon_code = '" . $id1 . "'");
-
+                             where coupon_code = '" . $prefix . $id1 . "'");
       if ($query->RecordCount() < 1 ) $good_result = 1;
     }
-    return $id1;
+    return ($good_result == 1) ? $prefix . $id1 : ''; // blank means couldn't generate a unique code (typically because the max length was encountered before being able to generate unique)
   }
+
 /**
  * Update the Customers GV account
  */
@@ -2064,7 +2101,7 @@ while (!$chk_sale_categories_all->EOF) {
     global $db;
 
     if (PRODUCTS_OPTIONS_TYPE_READONLY_IGNORED == '1' and $not_readonly == 'true') {
-      // don't include READONLY attributes to determin if attributes must be selected to add to cart
+      // don't include READONLY attributes to determine if attributes must be selected to add to cart
       $attributes_query = "select pa.products_attributes_id
                            from " . TABLE_PRODUCTS_ATTRIBUTES . " pa left join " . TABLE_PRODUCTS_OPTIONS . " po on pa.options_id = po.products_options_id
                            where pa.products_id = '" . (int)$products_id . "' and po.products_options_type != '" . PRODUCTS_OPTIONS_TYPE_READONLY . "' limit 1";
@@ -2077,11 +2114,7 @@ while (!$chk_sale_categories_all->EOF) {
 
     $attributes = $db->Execute($attributes_query);
 
-    if ($attributes->fields['products_attributes_id'] > 0) {
-      return true;
-    } else {
-      return false;
-    }
+    return !($attributes->EOF);
   }
 
 /**
@@ -2311,7 +2344,7 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
   }
 
 /**
- * lookup attributes model
+ * lookup language dir from id
  */
   function zen_get_language_name($lookup) {
     global $db;
@@ -2325,7 +2358,9 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
  * Delete all product attributes
  */
   function zen_delete_products_attributes($delete_product_id) {
-    global $db;
+    global $db, $zco_notifier;
+    $zco_notifier->notify('NOTIFIER_ADMIN_ZEN_DELETE_PRODUCTS_ATTRIBUTES', array(), $delete_product_id);
+
     // first delete associated downloads
     $products_delete_from = $db->Execute("select pa.products_id, pad.products_attributes_id from " . TABLE_PRODUCTS_ATTRIBUTES . " pa, " . TABLE_PRODUCTS_ATTRIBUTES_DOWNLOAD . " pad  where pa.products_id='" . (int)$delete_product_id . "' and pad.products_attributes_id= pa.products_attributes_id");
     while (!$products_delete_from->EOF) {
@@ -2335,7 +2370,6 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
 
     $db->Execute("delete from " . TABLE_PRODUCTS_ATTRIBUTES . " where products_id = '" . (int)$delete_product_id . "'");
 }
-
 
 /**
  * Set Product Attributes Sort Order to Products Option Value Sort Order
@@ -2662,6 +2696,16 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
     }
     return $lookup_value;
   }
+
+  function zen_get_configuration_group_value($lookup) {
+    global $db;
+    $configuration_query= $db->Execute("select configuration_group_title from " . TABLE_CONFIGURATION_GROUP . " where configuration_group_id ='" . (int)$lookup . "'");
+    if ( $configuration_query->RecordCount() == 0 ) {
+      return (int)$lookup;
+    }
+    return $configuration_query->fields['configuration_group_title'];
+  }
+
 
 /**
  * check to see if free shipping rules allow the specified shipping module to be enabled or to disable it in lieu of being free
@@ -3095,13 +3139,8 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
     $clean_it= nl2br($clean_it);
 
 // update breaks with a space for text displays in all listings with descriptions
-    while (strstr($clean_it, '<br>')) $clean_it = str_replace('<br>', ' ', $clean_it);
-    while (strstr($clean_it, '<br />')) $clean_it = str_replace('<br />', ' ', $clean_it);
-    while (strstr($clean_it, '<br/>')) $clean_it = str_replace('<br/>', ' ', $clean_it);
-    while (strstr($clean_it, '<p>')) $clean_it = str_replace('<p>', ' ', $clean_it);
-    while (strstr($clean_it, '</p>')) $clean_it = str_replace('</p>', ' ', $clean_it);
-
-    while (strstr($clean_it, '  ')) $clean_it = str_replace('  ', ' ', $clean_it);
+    $clean_it = preg_replace('~(<br ?/?>|</?p>)~', ' ', $clean_it);
+    $clean_it = preg_replace('/[ ]+/', ' ', $clean_it);
 
 // remove other html code to prevent problems on display of text
     $clean_it = strip_tags($clean_it);
@@ -3131,6 +3170,29 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
     }
   }
 
+/**
+   * build a list of directories in a specified parent folder
+   * (formatted in id/text pairs for SELECT boxes)
+   *
+   * @todo convert to a directory-iterator instead
+   * @todo - this will be deprecated after converting remaining admin pages to LEAD format
+   *
+   * @return array (id/text pairs)
+   */
+  function zen_build_subdirectories_array($parent_folder = '', $default_text = 'Main Directory') {
+    if ($parent_folder == '') $parent_folder = DIR_FS_CATALOG_IMAGES;
+    $dir_info[] = array('id' => '', 'text' => $default_text);
+
+    $dir = @dir($parent_folder);
+    while ($file = $dir->read()) {
+      if (is_dir($parent_folder . $file) && $file != "." && $file != "..") {
+        $dir_info[] = array('id' => $file . '/', 'text' => $file);
+      }
+    }
+    $dir->close();
+    sort($dir_info);
+    return $dir_info;
+  }
 /**
  * Recursive algorithm to restrict all sub_categories of a specified category to a specified product_type
  */

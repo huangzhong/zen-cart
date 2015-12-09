@@ -177,7 +177,6 @@
       var kill = document.getElementById('hoverJS');
       kill.disabled = true;
     }
-  if (typeof _editor_url == "string") HTMLArea.replace('message_html');
   }
   // -->
 </script>
@@ -316,7 +315,7 @@ function check_form(form_name) {
                 <td><?php echo zen_draw_separator('pixel_trans.gif', '1', '10'); ?></td>
               </tr>
               <tr>
-                <td class="smallText"><b><?php echo TEXT_AMOUNT; ?></b><br /><?php echo nl2br(htmlspecialchars(stripslashes($_POST['amount']), ENT_COMPAT, CHARSET, TRUE)) . ($_POST['amount'] <= 0 ? '&nbsp<span class="alert">' . ERROR_GV_AMOUNT . '</span>' : ''); ?></td>
+                <td class="smallText"><b><?php echo TEXT_AMOUNT; ?></b><br /><?php echo nl2br(htmlspecialchars(stripslashes($_POST['amount']), ENT_COMPAT, CHARSET, TRUE)) . ($_POST['amount'] <= 0 ? '&nbsp;<span class="alert">' . ERROR_GV_AMOUNT . '</span>' : ''); ?></td>
               </tr>
               <tr>
                 <td><?php echo zen_draw_separator('pixel_trans.gif', '1', '10'); ?></td>
@@ -404,7 +403,7 @@ function check_form(form_name) {
 <?php } ?>
               <tr>
                 <td valign="top" class="main"><?php echo TEXT_MESSAGE; ?></td>
-                <td><?php echo zen_draw_textarea_field('message', 'soft', '60', '15', htmlspecialchars(($_POST['message']=='') ? strip_tags(TEXT_GV_ANNOUNCE) : stripslashes($_POST['message']), ENT_COMPAT, CHARSET, TRUE)); ?></td>
+                <td><?php echo zen_draw_textarea_field('message', 'soft', '60', '15', htmlspecialchars(($_POST['message']=='') ? strip_tags(TEXT_GV_ANNOUNCE) : stripslashes($_POST['message']), ENT_COMPAT, CHARSET, TRUE), 'class="noEditor"'); ?></td>
               </tr>
               <tr>
                 <td colspan="2"><?php echo zen_draw_separator('pixel_trans.gif', '1', '10'); ?></td>

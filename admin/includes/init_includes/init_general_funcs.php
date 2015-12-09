@@ -17,11 +17,6 @@ if (!defined('IS_ADMIN_FLAG')) {
 // customization for the design layout
   define('BOX_WIDTH', 125); // how wide the boxes should be in pixels (default: 125)
 
-// Define how do we update currency exchange rates
-// Possible values are 'ecb', 'boc', 'oanda', 'xe', or '' (to disable the option).  HOWEVER: Note that using "xe" or "oanda" subjects you to TOS terms requiring you to subscribe to their services. Use at your own risk.
-  define('CURRENCY_SERVER_PRIMARY', 'ecb');
-  define('CURRENCY_SERVER_BACKUP', 'boc');
-
 // include the database functions
   require(DIR_WS_FUNCTIONS . 'database.php');
 
@@ -61,7 +56,7 @@ if (isset($_GET) & sizeof($_GET) > 0 ) {
 // check for SSL configuration changes:
 if (!defined('SSLPWSTATUSCHECK')) die('database upgrade required. please run the 1.3.9-to-1.5.0 upgrade via zc_install');
 list($a, $b, $c) = explode(':', SSLPWSTATUSCHECK); $a = (int)$a; $b = (int)$b; $c = (int)$c;
-$d = (ENABLE_SSL_ADMIN == 'true') ? '1' : '0';
+$d = (defined('ENABLE_SSL_ADMIN') && ENABLE_SSL_ADMIN == 'true') ? '1' : '0';
 $e = (substr(HTTP_SERVER, 0, 5) == 'https') ? '1' : '0';
 $f = ':'.$d.':'.$e;
 if ($a == 0) {

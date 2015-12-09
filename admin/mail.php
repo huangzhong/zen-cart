@@ -123,7 +123,6 @@ function init()
     var kill = document.getElementById('hoverJS');
     kill.disabled = true;
   }
-  if (typeof _editor_url == "string") HTMLArea.replace('message_html');
 }
 // -->
 </script>
@@ -336,7 +335,7 @@ function check_form(form_name) {
               <td class="main" width="750">
 <?php if (EMAIL_USE_HTML != 'true') echo TEXT_WARNING_HTML_DISABLED; ?>
 <?php if (EMAIL_USE_HTML == 'true') {
-  echo zen_draw_textarea_field('message_html', 'soft', '100%', '25', htmlspecialchars(stripslashes($_POST['message_html']), ENT_COMPAT, CHARSET, TRUE), 'id="message_html"');
+  echo zen_draw_textarea_field('message_html', 'soft', '100%', '25', htmlspecialchars(stripslashes($_POST['message_html']), ENT_COMPAT, CHARSET, TRUE), 'id="message_html" class="editorHook"');
 } ?>
               </td>
             </tr>
@@ -345,7 +344,7 @@ function check_form(form_name) {
             </tr>
             <tr>
               <td valign="top" class="main"><?php echo TEXT_MESSAGE; ?></td>
-              <td><?php echo zen_draw_textarea_field('message', 'soft', '100%', '15', htmlspecialchars($_POST['message'], ENT_COMPAT, CHARSET, TRUE)); ?></td>
+              <td><?php echo zen_draw_textarea_field('message', 'soft', '100%', '15', htmlspecialchars($_POST['message'], ENT_COMPAT, CHARSET, TRUE), 'class="noEditor"'); ?></td>
             </tr>
 
 <?php if (defined('EMAIL_ATTACHMENTS_ENABLED') && EMAIL_ATTACHMENTS_ENABLED === true && defined('DIR_WS_ADMIN_ATTACHMENTS') && is_dir(DIR_WS_ADMIN_ATTACHMENTS) && is_writable(DIR_WS_ADMIN_ATTACHMENTS) ) { ?>
@@ -354,14 +353,7 @@ function check_form(form_name) {
             </tr>
 <?php if (defined('EMAIL_ATTACHMENT_UPLOADS_ENABLED') && EMAIL_ATTACHMENT_UPLOADS_ENABLED === true) { ?>
 <?php
-  $dir = @dir(DIR_WS_ADMIN_ATTACHMENTS);
-  $dir_info[] = array('id' => '', 'text' => "admin-attachments");
-  while ($file = $dir->read()) {
-    if (is_dir(DIR_WS_ADMIN_ATTACHMENTS . $file) && strtoupper($file) != 'CVS' && $file != "." && $file != "..") {
-      $dir_info[] = array('id' => $file . '/', 'text' => $file);
-    }
-  }
-  $dir->close();
+  $dir_info = zen_build_subdirectories_array(DIR_WS_ADMIN_ATTACHMENTS, 'admin-attachments');
 ?>
             <tr>
               <td class="main" valign="top"><?php echo TEXT_SELECT_ATTACHMENT_TO_UPLOAD; ?></td>
@@ -373,14 +365,7 @@ function check_form(form_name) {
             </tr>
 <?php  } // end uploads-enabled dialog ?>
 <?php
-  $dir = @dir(DIR_WS_ADMIN_ATTACHMENTS);
-  $file_list[] = array('id' => '', 'text' => "(none)");
-  while ($file = $dir->read()) {
-    if (is_file(DIR_WS_ADMIN_ATTACHMENTS . $file) && strtoupper($file) != 'CVS' && $file != "." && $file != "..") {
-      $file_list[] = array('id' => $file , 'text' => $file);
-    }
-  }
-  $dir->close();
+  $dir_info = zen_build_subdirectories_array(DIR_WS_ADMIN_ATTACHMENTS, '(none)');
 ?>
             <tr>
               <td class="main" valign="top"><?php echo TEXT_SELECT_ATTACHMENT; ?></td>

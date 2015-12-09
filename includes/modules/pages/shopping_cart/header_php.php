@@ -60,6 +60,7 @@ $flagHasCartContents = ($_SESSION['cart']->count_contents() > 0);
 $cartShowTotal = $currencies->format($_SESSION['cart']->show_total());
 
 $flagAnyOutOfStock = false;
+$flagStockCheck = '';
 $products = $_SESSION['cart']->get_products();
 for ($i=0, $n=sizeof($products); $i<$n; $i++) {
   if (($i/2) == floor($i/2)) {
@@ -124,22 +125,17 @@ for ($i=0, $n=sizeof($products); $i<$n; $i++) {
       $attrArray[$option]['price_prefix'] = $attributes_values->fields['price_prefix'];
     }
   } //end foreach [attributes]
+
+  // Stock Check
   if (STOCK_CHECK == 'true') {
-    $flagStockCheck = zen_check_stock($products[$i]['id'], $products[$i]['quantity']);
-// bof: extra check on stock for mixed YES
-    if ($flagStockCheck != true) {
-//echo zen_get_products_stock($products[$i]['id']) - $_SESSION['cart']->in_cart_mixed($products[$i]['id']) . '<br>';
-      if ( zen_get_products_stock($products[$i]['id']) - $_SESSION['cart']->in_cart_mixed($products[$i]['id']) < 0) {
+    $qtyAvailable = zen_get_products_stock($products[$i]['id']);
+    // compare against product inventory, and against mixed=YES
+    if ($qtyAvailable - $products[$i]['quantity'] < 0 || $qtyAvailable - $_SESSION['cart']->in_cart_mixed($products[$i]['id']) < 0) {
         $flagStockCheck = '<span class="markProductOutOfStock">' . STOCK_MARK_PRODUCT_OUT_OF_STOCK . '</span>';
-      } else {
-        $flagStockCheck = '';
-      }
-    }
-// eof: extra check on stock for mixed YES
-    if ($flagStockCheck == true) {
       $flagAnyOutOfStock = true;
     }
   }
+
   $linkProductsImage = zen_href_link(zen_get_info_page($products[$i]['id']), 'products_id=' . $products[$i]['id']);
   $linkProductsName = zen_href_link(zen_get_info_page($products[$i]['id']), 'products_id=' . $products[$i]['id']);
   $productsImage = (IMAGE_SHOPPING_CART_STATUS == 1 ? zen_image(DIR_WS_IMAGES . $products[$i]['image'], $products[$i]['name'], IMAGE_SHOPPING_CART_WIDTH, IMAGE_SHOPPING_CART_HEIGHT) : '');
@@ -149,7 +145,7 @@ for ($i=0, $n=sizeof($products); $i<$n; $i++) {
 //  $showFixedQuantityAmount = $products[$i]['quantity'] . zen_draw_hidden_field('cart_quantity[]', 1);
   $showFixedQuantityAmount = $products[$i]['quantity'] . zen_draw_hidden_field('cart_quantity[]', $products[$i]['quantity']);
   $showMinUnits = zen_get_products_quantity_min_units_display($products[$i]['id']);
-  $quantityField = zen_draw_input_field('cart_quantity[]', $products[$i]['quantity'], 'size="4"');
+  $quantityField = zen_draw_input_field('cart_quantity[]', $products[$i]['quantity'], 'size="4" class="cart_input_'.$products[$i]['id'].'"');
   $ppe = $products[$i]['final_price'];
   $ppe = zen_round(zen_add_tax($ppe, zen_get_tax_rate($products[$i]['tax_class_id'])), $currencies->get_decimal_places($_SESSION['currency']));
   $ppt = $ppe * $products[$i]['quantity'];

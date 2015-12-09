@@ -1115,21 +1115,18 @@ if ($action == '') {
 // fix here border width
 ?>
       <tr>
-        <td><form name="attributes" action="<?php echo zen_href_link(FILENAME_ATTRIBUTES_CONTROLLER, 'action=' . $form_action . (isset($_GET['option_page']) ? '&option_page=' . $_GET['option_page'] . '&' : '') . (isset($_GET['value_page']) ? '&value_page=' . $_GET['value_page'] . '&' : '') . (isset($_GET['attribute_page']) ? '&attribute_page=' . $_GET['attribute_page'] : '') . '&products_filter=' . $products_filter ); ?>" method="post", enctype="multipart/form-data"><?php echo zen_draw_hidden_field('securityToken', $_SESSION['securityToken']); ?><table border="0" cellspacing="0" cellpadding="2">
+        <td><form name="attributes" action="<?php echo zen_href_link(FILENAME_ATTRIBUTES_CONTROLLER, 'action=' . $form_action . (isset($_GET['option_page']) ? '&option_page=' . $_GET['option_page'] . '&' : '') . (isset($_GET['value_page']) ? '&value_page=' . $_GET['value_page'] . '&' : '') . (isset($_GET['attribute_page']) ? '&attribute_page=' . $_GET['attribute_page'] : '') . '&products_filter=' . $products_filter ); ?>" method="post" enctype="multipart/form-data"><?php echo zen_draw_hidden_field('securityToken', $_SESSION['securityToken']); ?><table border="0" cellspacing="0" cellpadding="2">
           <tr>
             <td colspan="10" class="smallText">
 <?php
   $per_page = (defined('MAX_ROW_LISTS_ATTRIBUTES_CONTROLLER') && (int)MAX_ROW_LISTS_ATTRIBUTES_CONTROLLER > 3) ? (int)MAX_ROW_LISTS_ATTRIBUTES_CONTROLLER : 40;
   $attributes = "select pa.*
   from (" . TABLE_PRODUCTS_ATTRIBUTES . " pa
-  left join " . TABLE_PRODUCTS_DESCRIPTION . " pd
-  on pa.products_id = pd.products_id
-  and pd.language_id = '" . (int)$_SESSION['languages_id'] . "'
   left join " . TABLE_PRODUCTS_OPTIONS . " po
   on pa.options_id = po.products_options_id
   and po.language_id = '" . (int)$_SESSION['languages_id'] . "'" . ")
   where pa.products_id ='" . $products_filter . "'
-  order by pd.products_name, LPAD(po.products_options_sort_order,11,'0'), LPAD(pa.options_id,11,'0'), LPAD(pa.products_options_sort_order,11,'0')";
+  order by LPAD(po.products_options_sort_order,11,'0'), LPAD(pa.options_id,11,'0'), LPAD(pa.products_options_sort_order,11,'0')";
   $attribute_query = $db->Execute($attributes);
 
   $attribute_page_start = ($per_page * $_GET['attribute_page']) - $per_page;
@@ -1474,17 +1471,7 @@ if ($action == '') {
 <?php
 // edit
 // attributes images
-  $dir = @dir(DIR_FS_CATALOG_IMAGES);
-  $dir_info[] = array('id' => '', 'text' => "Main Directory");
-  while ($file = $dir->read()) {
-    if (is_dir(DIR_FS_CATALOG_IMAGES . $file) && strtoupper($file) != 'CVS' && $file != "." && $file != "..") {
-      $dir_info[] = array('id' => $file . '/', 'text' => $file);
-    }
-  }
-  $dir->close();
-
-  sort($dir_info);
-
+  $dir_info = zen_build_subdirectories_array(DIR_FS_CATALOG_IMAGES);
   if ($attributes_values->fields['attributes_image'] != '') {
     $default_directory = substr( $attributes_values->fields['attributes_image'], 0,strpos( $attributes_values->fields['attributes_image'], '/')+1);
   } else {
@@ -1959,16 +1946,7 @@ $off_overwrite = false;
 <?php
 // add
 // attributes images
-  $dir = @dir(DIR_FS_CATALOG_IMAGES);
-  $dir_info[] = array('id' => '', 'text' => "Main Directory");
-  while ($file = $dir->read()) {
-    if (is_dir(DIR_FS_CATALOG_IMAGES . $file) && strtoupper($file) != 'CVS' && $file != "." && $file != "..") {
-      $dir_info[] = array('id' => $file . '/', 'text' => $file);
-    }
-  }
-  $dir->close();
-  sort($dir_info);
-
+  $dir_info = zen_build_subdirectories_array(DIR_FS_CATALOG_IMAGES);
   $default_directory = 'attributes/';
 ?>
 
@@ -2085,7 +2063,6 @@ $off_overwrite = false;
 <!-- eof_adding -->
 
 <!-- products_attributes_eof //-->
-  </tr>
 </table>
 <!-- body_text_eof //-->
 <!-- footer //-->
