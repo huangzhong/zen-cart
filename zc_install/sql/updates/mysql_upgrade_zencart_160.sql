@@ -4,6 +4,7 @@
 # * @package Installer
 # * @access private
 # * @copyright Copyright 2003-2015 Zen Cart Development Team
+# * @copyright Portions copyright COWOA authors see https://www.zen-cart.com/downloads.php?do=file&id=1115
 # * @copyright Portions Copyright 2003 osCommerce
 # * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
 # * @version GIT: $Id: Author: DrByte  New in v1.6.0 $
@@ -63,6 +64,7 @@ INSERT INTO configuration (configuration_title, configuration_key, configuration
 UPDATE configuration SET val_function = '{"error":"TEXT_MIN_ADMIN_USER_LENGTH","id":"FILTER_VALIDATE_INT","options":{"options":{"min_range":4}}}', configuration_description = 'Minimum length of admin usernames (must be 4 or more)' WHERE configuration_key = 'ADMIN_NAME_MINIMUM_LENGTH';
 
 DELETE FROM configuration WHERE configuration_key = 'MODULE_ORDER_TOTAL_GV_ORDER_STATUS_ID';
+DELETE FROM configuration WHERE configuration_key = 'ALLOW_GUEST_TO_TELL_A_FRIEND';
 
 INSERT INTO configuration (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) VALUES ('Topmost Category Parent ID', 'TOPMOST_CATEGORY_PARENT_ID', '0', 'DEFAULT: 0<br>This is the top-most "parent" category ID. In default installs, this is always 0.  Very advanced customizations might require this to be adjusted. <br>WARNING: Changing this to something other than 0 could result in unpredictable behavior!!', '6', '80', now());
 
@@ -84,7 +86,7 @@ DELETE FROM configuration where configuration_key = 'PHPBB_LINKS_ENABLED' && con
 
 
 UPDATE countries set address_format_id = 7 where countries_iso_code_3 = 'AUS';
-UPDATE countries set address_format_id = 5 where countries_iso_code_3 IN ('BEL', 'NLD', 'SWE');
+UPDATE countries set address_format_id = 5 where countries_iso_code_3 IN ('BEL', 'NLD', 'SWE', 'ITA');
 UPDATE countries set countries_name = 'Åland Islands' where countries_iso_code_3 = 'ALA';
 UPDATE countries set countries_name = 'Réunion' where countries_iso_code_3 = 'REU';
 UPDATE countries set countries_name = "Côte d'Ivoire" where countries_iso_code_3 = 'CIV';
@@ -159,21 +161,20 @@ UPDATE configuration set configuration_value = '1' WHERE configuration_key = 'SH
 
 UPDATE configuration SET configuration_title='Credit Card Enable Status - Debit', configuration_key = 'CC_ENABLED_DEBIT', configuration_value ='0', configuration_description='Accept Debit Cards 0= off 1= on<br>NOTE: This is not deeply integrated at this time, and this setting may be redundant if your payment modules do not yet specifically have code to honour this switch.', date_added=now() WHERE configuration_key='CC_ENABLED_SWITCH';
 
-##@TODO
-## COWOA CHANGES - Although need to allow for a current cowoa installation
-ALTER TABLE customers ADD COLUMN COWOA_account tinyint(1) NOT NULL default 0;
-ALTER TABLE orders ADD COLUMN COWOA_order tinyint(1) NOT NULL default 0;
+## Gueat Checkout
+ALTER TABLE customers ADD COLUMN is_guest_account tinyint(1) NOT NULL default 0;
+ALTER TABLE orders ADD COLUMN is_guest_order tinyint(1) NOT NULL default 0;
 INSERT INTO configuration_group VALUES (NULL, 'Guest Checkout', 'Set Checkout Without an Account', '100', '1');
 
 #NEXT_X_ROWS_AS_ONE_COMMAND:4
 SET @t1=0;
 SELECT (@t1:=configuration_group_id) as t1 FROM configuration_group WHERE configuration_group_title = 'Guest Checkout';
-INSERT INTO admin_pages VALUES ('configCOWOA','BOX_CONFIGURATION_COWOA','FILENAME_CONFIGURATION',CONCAT('gID=',@t1), 'configuration', 'Y', 31);
+INSERT INTO admin_pages VALUES ('configGuest','BOX_CONFIGURATION_GUEST','FILENAME_CONFIGURATION',CONCAT('gID=',@t1), 'configuration', 'Y', 31);
 INSERT INTO configuration (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added, use_function, set_function) VALUES
-('COWOA', 'COWOA_STATUS', 'false', 'Activate COWOA Checkout? <br />Set to True to allow a customer to checkout without an account.', @t1, 10, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),'),
-('Enable Order Status', 'COWOA_ORDER_STATUS', 'false', 'Enable The Order Status Function of COWOA?<br />Set to True so that a Customer that uses COWOA will receive an E-Mail with instructions on how to view the status of their order.', @t1, 11, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),'),
-('Enable E-Mail Only', 'COWOA_EMAIL_ONLY', 'false', 'Enable The E-Mail Order Function of COWOA?<br />Set to True so that a Customer that uses COWOA will only need to enter their E-Mail Address upon checkout if their Cart Balance is 0 (Free).', @t1, 12, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),'),
-('Enable Forced Logoff', 'COWOA_LOGOFF', 'false', 'Enable The Forced LogOff Function of COWOA?<br />Set to True so that a Customer that uses COWOA will be logged off automatically after a sucessfull checkout. If they are getting a file download, then they will have to wait for the Status E-Mail to arrive in order to download the file.', @t1, 13, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),');
+  ('Guest Checkout allowed?', 'GUEST_CHECKOUT_ALLOWED', 'false', 'Enable Guest Checkout? <br />Set to True to allow a customer to checkout without an account.', 26, 10, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),'),
+  ('Enable Order Status for Guest Orders', 'GUEST_ORDER_STATUS', 'true', 'Alloq Guests to see Order Status?<br />Set to True so that a Customer that uses Guest Checkout will receive an E-Mail with instructions on how to view the status of their order.', 26, 11, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),'),
+  ('Enable Guest E-Mail Only checkout', 'GUEST_ALLOW_EMAIL_ONLY', 'false', 'Enable The E-Mail Order Function for Guests?<br />Set to True so that a Guest Customer will only need to enter their E-Mail Address upon checkout if their Cart Balance is 0 (Free).', 26, 12, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),'),
+  ('Enable Create Account on Success', 'GUEST_ALLOW_CREATE_ACCOUNT', 'true', 'Allow Guest to create a full account on Checkout Success.', 26, 12, NOW(), NULL, 'zen_cfg_select_option(array(\'true\', \'false\'),');
 
 
 INSERT INTO configuration_group VALUES (NULL, 'Widget Settings', 'Set Widget Configuration Values', '31', '1');
@@ -184,7 +185,9 @@ INSERT INTO admin_pages VALUES ('configWidgets','BOX_CONFIGURATION_WIDGET','FILE
 INSERT INTO configuration (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added, use_function, set_function) VALUES
 ('Max Error Logs', 'MAX_ERROR_LOGS', '20', 'Display this number of error logs', @t1, '1', now(), NULL, NULL);
 
-INSERT INTO query_builder ( query_id , query_category , query_name , query_description , query_string ) VALUES ( '', 'email,newsletters', 'Permanent Account Holders Only', 'Send email only to permanent account holders ', 'select customers_email_address, customers_firstname, customers_lastname from TABLE_CUSTOMERS where COWOA_account != 1 order by customers_lastname, customers_firstname, customers_email_address');
+INSERT INTO admin_pages (page_key, language_key, main_page, page_params, menu_key, display_on_menu, sort_order) VALUES ('system_inspection', 'BOX_TOOLS_SYSTEM_INSPECTION', 'FILENAME_SYSTEM_INSPECTION', '', 'tools', 'Y', 14) ;
+
+INSERT INTO query_builder ( query_id , query_category , query_name , query_description , query_string ) VALUES ( '', 'email,newsletters', 'Permanent Account Holders Only', 'Send email only to permanent account holders ', 'select customers_email_address, customers_firstname, customers_lastname from TABLE_CUSTOMERS where is_guest_account != 1 order by customers_lastname, customers_firstname, customers_email_address');
 
 # --------------------------------------------------------
 

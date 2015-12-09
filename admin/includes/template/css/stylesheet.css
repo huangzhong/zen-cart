@@ -2,10 +2,10 @@
  * @package admin
  * @ignore
  * @access private
- * @copyright Copyright 2003-2014 Zen Cart Development Team
+ * @copyright Copyright 2003-2015 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: stylesheet.css 19301 2011-07-28 21:50:05Z kuroi $
+ * @version $Id: stylesheet.css  Modified in v1.6.0 $
  */
 @import "foundation-icons.css";
 @import "font-awesome.min.css";
@@ -15,7 +15,7 @@ color:#0000ff;
 text-decoration:none;
 }
 a,body,html,table{
-font:normal normal 11px Verdana,sans-serif;
+font:normal normal 11px Verdana, sans-serif;
 }
 a:hover{
 color:#0000ff;
@@ -316,7 +316,6 @@ h1,.pageHeading{
 color:#003D00; /*727272*/
 font-size:16px;
 font-variant:small-caps;
-font-weight:bold;
 }
 .SaleMakerDisabled{
 background-color:#f0f1f1;
@@ -368,8 +367,12 @@ color:#ff6600;
 }
 label.error {color: red; font-weight: bold;}
 
-
 .coupon-future, .coupon-expired {font-weight: bold; color: red}
 
 body#indexBody {font-size: 13px}
 body#indexBody a i.fa {font-size: 1.2em}
+
+td,
+th {
+  padding: 2px;
+}

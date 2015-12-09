@@ -6,7 +6,6 @@
  * @copyright Copyright 2003-2015 Zen Cart Development Team
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
  * @version GIT: $Id: Author: Ian Wilson  Modified in v1.6.0 $
- * @version GIT: Integrated COWOA v2.2 - 2007 - 2012
  */
 /**
  * order class
@@ -20,9 +19,12 @@ if (!defined('IS_ADMIN_FLAG')) {
 }
 class order extends base {
   var $info, $totals, $products, $customer, $delivery, $content_type, $email_low_stock, $products_ordered_attributes,
-  $products_ordered, $products_ordered_email, $attachArray;
+  $products_ordered, $products_ordered_email, $attachArray, $currency;
 
-  function __construct($order_id = '') {
+  function __construct($order_id = '', $override_currency = false) {
+
+    $this->currency = ($override_currency === false) ? $_SESSION['currency'] : $override_currency;
+
     $this->info = array();
     $this->totals = array();
     $this->products = array();
@@ -56,7 +58,7 @@ class order extends base {
                          billing_state, billing_country, billing_address_format_id,
                          payment_method, payment_module_code, shipping_method, shipping_module_code,
                          coupon_code, cc_type, cc_owner, cc_number, cc_expires, currency, currency_value,
-                         date_purchased, orders_status, last_modified, order_total, order_tax, ip_address, COWOA_order, order_weight
+                         date_purchased, orders_status, last_modified, order_total, order_tax, ip_address, is_guest_order, order_weight
                         from " . TABLE_ORDERS . "
                         where orders_id = '" . (int)$order_id . "'";
 
@@ -258,7 +260,7 @@ class order extends base {
   function cart() {
     global $db, $currencies;
 
-    $decimals = $currencies->get_decimal_places($_SESSION['currency']);
+    $decimals = $currencies->get_decimal_places($this->currency);
 
     $this->content_type = $_SESSION['cart']->get_content_type();
 
@@ -360,8 +362,8 @@ class order extends base {
     }
 
     $this->info = array('order_status' => DEFAULT_ORDERS_STATUS_ID,
-                        'currency' => $_SESSION['currency'],
-                        'currency_value' => $currencies->currencies[$_SESSION['currency']]['value'],
+                        'currency' => $this->currency,
+                        'currency_value' => $currencies->currencies[$this->currency]['value'],
                         'payment_method' => $GLOBALS[$class]->title,
                         'payment_module_code' => $GLOBALS[$class]->code,
                         'coupon_code' => $coupon_code->fields['coupon_code'],
@@ -372,7 +374,7 @@ class order extends base {
     //                          'cc_cvv' => (isset($GLOBALS['cc_cvv']) ? $GLOBALS['cc_cvv'] : ''),
                         'shipping_method' => (isset($_SESSION['shipping']['title'])) ? $_SESSION['shipping']['title'] : '',
                         'shipping_module_code' => (isset($_SESSION['shipping']['id']) && strpos($_SESSION['shipping']['id'], '_') > 0 ? $_SESSION['shipping']['id'] : $_SESSION['shipping']),
-                        'shipping_cost' => isset($_SESSION['shipping']['cost']) ? $_SESSION['shipping']['cost'] : 0,
+                        'shipping_cost' => $currencies->value(isset($_SESSION['shipping']['cost']) ? $_SESSION['shipping']['cost'] : 0, false, $this->currency),
                         'subtotal' => 0,
                         'shipping_tax' => 0,
                         'tax' => 0,
@@ -388,9 +390,9 @@ class order extends base {
     //print_r($GLOBALS);
     //echo $_SESSION['payment'];
     /*
-    // this is set above to the module filename it should be set to the module title like Check/Money Order rather than moneyorder
-    if (isset($$_SESSION['payment']) && is_object($$_SESSION['payment'])) {
-    $this->info['payment_method'] = $$_SESSION['payment']->title;
+    // this is set above to the module filename it should be set to the module title like Checks/Money Order rather than moneyorder
+    if (isset(${$_SESSION['payment']}) && is_object(${$_SESSION['payment']})) {
+    $this->info['payment_method'] = ${$_SESSION['payment']}->title;
     }
     */
 
@@ -556,8 +558,8 @@ class order extends base {
         /*********************************************
          * Calculate taxes for this product
          *********************************************/
-        $shown_price = (zen_add_tax($this->products[$index]['final_price'] * $this->products[$index]['qty'], $this->products[$index]['tax']))
-        + zen_add_tax($this->products[$index]['onetime_charges'], $this->products[$index]['tax']);
+        $shown_price = $currencies->value(zen_add_tax($this->products[$index]['final_price'] * $this->products[$index]['qty'], $this->products[$index]['tax']), false, $this->currency)
+          + $currencies->value(zen_add_tax($this->products[$index]['onetime_charges'], $this->products[$index]['tax']), false, $this->currency);
         $this->info['subtotal'] += $shown_price;
         $this->notify('NOTIFIY_ORDER_CART_SUBTOTAL_CALCULATE', array('shown_price'=>$shown_price));
         // find product's tax rate and description
@@ -572,11 +574,12 @@ class order extends base {
   //        $tax_add = zen_round(($products_tax / 100) * $shown_price, $currencies->currencies[$this->info['currency']]['decimal_places']);
           $tax_add = ($products_tax/100) * $shown_price;
         }
+        $tax_add = $currencies->value($tax_add, false, $this->currency);
         $this->info['tax'] += $tax_add;
         foreach ($taxRates as $taxDescription=>$taxRate)
         {
-          $taxAdd = zen_calculate_tax($this->products[$index]['final_price']*$this->products[$index]['qty'], $taxRate)
-                  +  zen_calculate_tax($this->products[$index]['onetime_charges'], $taxRate);
+          $taxAdd = $currencies->value(zen_calculate_tax($this->products[$index]['final_price']*$this->products[$index]['qty'], $taxRate), false, $this->currency)
+                  + $currencies->value(zen_calculate_tax($this->products[$index]['onetime_charges'], $taxRate), false, $this->currency);
           if (isset($this->info['tax_groups'][$taxDescription]))
           {
             $this->info['tax_groups'][$taxDescription] += $taxAdd;
@@ -697,8 +700,7 @@ class order extends base {
                             'order_weight' => $this->info['order_weight']
                             );
 
-    if ($_SESSION['COWOA']) $sql_data_array[COWOA_order] = 1;
-
+    $this->notify('NOTIFY_ORDER_CREATE_SET_SQL_DATA_ARRAY', array(), $sql_data_array);
     zen_db_perform(TABLE_ORDERS, $sql_data_array);
 
     $insert_id = $db->Insert_ID();
@@ -998,83 +1000,63 @@ class order extends base {
   }
 
 
+    protected function sendLowStockEmails()
+    {
+        $this->send_low_stock_emails = true;
+        $this->notify('NOTIFY_ORDER_SEND_LOW_STOCK_EMAILS');
+        if ($this->send_low_stock_emails && $this->email_low_stock != ''  && SEND_LOWSTOCK_EMAIL=='1') {
+            $email_low_stock = SEND_EXTRA_LOW_STOCK_EMAIL_TITLE . "\n\n" . $this->email_low_stock;
+            zen_mail('', SEND_EXTRA_LOW_STOCK_EMAILS_TO, EMAIL_TEXT_SUBJECT_LOWSTOCK, $email_low_stock, STORE_OWNER, EMAIL_FROM, array('EMAIL_MESSAGE_HTML' => nl2br($email_low_stock)),'low_stock');
+        }
+    }
+
+
   function send_order_email($zf_insert_id, $zf_mode = FALSE) {
-    global $currencies, $order_totals;
-    $this->notify('NOTIFY_ORDER_SEND_EMAIL_INITIALIZE', array(), $zf_insert_id, $order_totals, $zf_mode);
-    if (!defined('ORDER_EMAIL_DATE_FORMAT')) define('ORDER_EMAIL_DATE_FORMAT', 'M-d-Y h:iA');
+      global $currencies, $order_totals;
 
-    $this->send_low_stock_emails = TRUE;
-    $this->notify('NOTIFY_ORDER_SEND_LOW_STOCK_EMAILS');
-    if ($this->send_low_stock_emails && $this->email_low_stock != ''  && SEND_LOWSTOCK_EMAIL=='1') {
-      $email_low_stock = SEND_EXTRA_LOW_STOCK_EMAIL_TITLE . "\n\n" . $this->email_low_stock;
-      zen_mail('', SEND_EXTRA_LOW_STOCK_EMAILS_TO, EMAIL_TEXT_SUBJECT_LOWSTOCK, $email_low_stock, STORE_OWNER, EMAIL_FROM, array('EMAIL_MESSAGE_HTML' => nl2br($email_low_stock)),'low_stock');
-    }
 
-    // prepare the email confirmation message details
-    // make an array to store the html version of the email
-    $html_msg=array();
-    $html_msg['EMAIL_TEXT_HEADER']     = EMAIL_TEXT_HEADER;
-    $html_msg['EMAIL_TEXT_FROM']       = EMAIL_TEXT_FROM;
-    $html_msg['INTRO_STORE_NAME']      = STORE_NAME;
-    $html_msg['EMAIL_THANKS_FOR_SHOPPING'] = EMAIL_THANKS_FOR_SHOPPING;
-    $html_msg['EMAIL_DETAILS_FOLLOW']  = EMAIL_DETAILS_FOLLOW;
-    $html_msg['INTRO_ORDER_NUM_TITLE'] = EMAIL_TEXT_ORDER_NUMBER;
-    $html_msg['INTRO_ORDER_NUMBER']    = $zf_insert_id;
-    $html_msg['INTRO_DATE_TITLE']      = EMAIL_TEXT_DATE_ORDERED;
-    $html_msg['INTRO_DATE_ORDERED']    = strftime(DATE_FORMAT_LONG);
-    $html_msg['INTRO_URL_TEXT']        = EMAIL_TEXT_INVOICE_URL_CLICK;
-    $html_msg['INTRO_URL_VALUE']       = zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false);
+      $this->notify('NOTIFY_ORDER_SEND_EMAIL_INITIALIZE', array(), $zf_insert_id, $order_totals, $zf_mode);
+      if (!defined('ORDER_EMAIL_DATE_FORMAT')) define('ORDER_EMAIL_DATE_FORMAT', 'M-d-Y h:iA');
 
-    $html_msg['EMAIL_CUSTOMER_PHONE']  = $this->customer['telephone'];
-    $html_msg['EMAIL_ORDER_DATE']      = date(ORDER_EMAIL_DATE_FORMAT);
+      $this->sendLowStockEmails();
+      // prepare the email confirmation message details
+      // make an array to store the html version of the email
+      $html_msg=array();
+      $email_order = '';
 
-// COWOA:If COWOA and Send Order Status is True
-    if ($_SESSION['COWOA'] && (COWOA_ORDER_STATUS == 'true'))  {
-      $htmlInvoiceURL=EMAIL_TEXT_INVOICE_URL_CLICK;
-      $htmlInvoiceValue=zen_href_link(FILENAME_ORDER_STATUS, 'order_id=' . $zf_insert_id, 'SSL', false);
+      $emailTextInvoiceText = EMAIL_TEXT_INVOICE_URL_CLICK;
+      $emailTextInvoiceUrl =zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false);
+
+      $this->notify('NOTIFY_ORDER_SEND_EMAIL_SET_ORDER_LINK', array(), $emailTextInvoiceText, $emailTextInvoiceUrl, $zf_insert_id);
+
+      $html_msg['EMAIL_TEXT_HEADER']     = EMAIL_TEXT_HEADER;
+      $html_msg['EMAIL_TEXT_FROM']       = EMAIL_TEXT_FROM;
+      $html_msg['INTRO_STORE_NAME']      = STORE_NAME;
+      $html_msg['EMAIL_THANKS_FOR_SHOPPING'] = EMAIL_THANKS_FOR_SHOPPING;
+      $html_msg['EMAIL_DETAILS_FOLLOW']  = EMAIL_DETAILS_FOLLOW;
+      $html_msg['INTRO_ORDER_NUM_TITLE'] = EMAIL_TEXT_ORDER_NUMBER;
+      $html_msg['INTRO_ORDER_NUMBER']    = $zf_insert_id;
+      $html_msg['INTRO_DATE_TITLE']      = EMAIL_TEXT_DATE_ORDERED;
+      $html_msg['INTRO_DATE_ORDERED']    = strftime(DATE_FORMAT_LONG);
+      $html_msg['INTRO_URL_TEXT']        = $emailTextInvoiceText;
+      $html_msg['INTRO_URL_VALUE']       = $emailTextInvoiceUrl;
+      $html_msg['EMAIL_CUSTOMER_PHONE']  = $this->customer['telephone'];
+      $html_msg['EMAIL_ORDER_DATE']      = date(ORDER_EMAIL_DATE_FORMAT);
+
       $email_order = EMAIL_TEXT_HEADER . EMAIL_TEXT_FROM . STORE_NAME . "\n\n" .
       $this->customer['firstname'] . ' ' . $this->customer['lastname'] . "\n\n" .
       EMAIL_THANKS_FOR_SHOPPING . "\n" . EMAIL_DETAILS_FOLLOW . "\n" .
       EMAIL_SEPARATOR . "\n" .
       EMAIL_TEXT_ORDER_NUMBER . ' ' . $zf_insert_id . "\n" .
       EMAIL_TEXT_DATE_ORDERED . ' ' . strftime(DATE_FORMAT_LONG) . "\n" .
-      EMAIL_TEXT_INVOICE_URL . ' ' . zen_href_link(FILENAME_ORDER_STATUS, 'order_id=' . $zf_insert_id, 'SSL', false) . "\n\n";
-    }
-
-// COWOA:If COWOA but Send Order Status is False
-    if ($_SESSION['COWOA'] && (COWOA_ORDER_STATUS == 'false')){
-      $htmlInvoiceURL='';
-      $htmlInvoiceValue='';
-      $email_order = EMAIL_TEXT_HEADER . EMAIL_TEXT_FROM . STORE_NAME . "\n\n" .
-      $this->customer['firstname'] . ' ' . $this->customer['lastname'] . "\n\n" .
-      EMAIL_THANKS_FOR_SHOPPING . "\n" . EMAIL_DETAILS_FOLLOW . "\n" .
-      EMAIL_SEPARATOR . "\n" .
-      EMAIL_TEXT_ORDER_NUMBER . ' ' . $zf_insert_id . "\n" .
-      EMAIL_TEXT_DATE_ORDERED . ' ' . strftime(DATE_FORMAT_LONG) . "\n\n";
-      $html_msg['INTRO_URL_TEXT']        = '';
-      $html_msg['INTRO_URL_VALUE']       = '';
-    }
-// NO COWOA, so lets set up the Text and HTML E-mail Information for the Order History Info
-    if (!$_SESSION['COWOA']){
-      $invoiceInfo=EMAIL_TEXT_INVOICE_URL . ' ' . zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false) . "\n\n";
-      $htmlInvoiceURL=EMAIL_TEXT_INVOICE_URL_CLICK;
-      $htmlInvoiceValue=zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false);
-      $email_order = EMAIL_TEXT_HEADER . EMAIL_TEXT_FROM . STORE_NAME . "\n\n" .
-      $this->customer['firstname'] . ' ' . $this->customer['lastname'] . "\n\n" .
-      EMAIL_THANKS_FOR_SHOPPING . "\n" . EMAIL_DETAILS_FOLLOW . "\n" .
-      EMAIL_SEPARATOR . "\n" .
-      EMAIL_TEXT_ORDER_NUMBER . ' ' . $zf_insert_id . "\n" .
-      EMAIL_TEXT_DATE_ORDERED . ' ' . strftime(DATE_FORMAT_LONG) . "\n" .
-      EMAIL_TEXT_INVOICE_URL . ' ' . zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false) . "\n\n";
-    }
+          $emailTextInvoiceText . ' ' . $emailTextInvoiceUrl . "\n\n";
 
     //comments area
-    if ($this->info['comments']) {
-      $email_order .= zen_db_output($this->info['comments']) . "\n\n";
-      $html_msg['ORDER_COMMENTS'] = nl2br(zen_db_output($this->info['comments']));
-    } else {
       $html_msg['ORDER_COMMENTS'] = '';
-    }
+      if ($this->info['comments']) {
+        $email_order .= zen_db_output($this->info['comments']) . "\n\n";
+        $html_msg['ORDER_COMMENTS'] = nl2br(zen_db_output($this->info['comments']));
+      }
 
     //products area
     $email_order .= EMAIL_TEXT_PRODUCTS . "\n" .
@@ -1103,10 +1085,8 @@ class order extends base {
       $email_order .= "\n" . EMAIL_TEXT_DELIVERY_ADDRESS . "\n" .
       EMAIL_SEPARATOR . "\n" .
       zen_address_label($_SESSION['customer_id'], $_SESSION['sendto'], 0, '', "\n") . "\n";
-//       $email_order .= $this->customer['telephone'] . "\n";
     }
 
-    //addresses area: For COWOA - Billing info sent if the Cart has a dollar value otherwise, do not show the billing address
     if ($_SESSION['cart']->show_total() != 0) {
     $email_order .= "\n" . EMAIL_TEXT_BILLING_ADDRESS . "\n" .
     EMAIL_SEPARATOR . "\n" .

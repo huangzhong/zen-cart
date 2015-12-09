@@ -89,7 +89,7 @@ define('BOX_CONFIGURATION_ALL_LISTING', 'All Listing');
 define('BOX_CONFIGURATION_INDEX_LISTING', 'Index Listing');
 define('BOX_CONFIGURATION_DEFINE_PAGE_STATUS', 'Define Page Status');
 define('BOX_CONFIGURATION_EZPAGES_SETTINGS', 'EZ-Pages Settings');
-define('BOX_CONFIGURATION_COWOA', 'Cowoa Configuration'); //for 1.6.0
+define('BOX_CONFIGURATION_CHECKOUT_SETTINGS', 'Checkout Settings'); //for 1.6.0
 define('BOX_CONFIGURATION_WIDGET', 'Widget Configuration'); //for 1.6.0
 
 // modules box text
@@ -471,6 +471,9 @@ define('NOT_INSTALLED_TEXT','Not Installed');
 
 // generic model
   define('TEXT_MODEL','Model:');
+  define('TEXT_PRODUCTS_MODEL', 'Products Model:');
+  define('TABLE_HEADING_PRODUCTS_MODEL','Model');
+  define('TABLE_HEADING_MODEL', 'Model');
 
 // column controller
   define('BOX_TOOLS_LAYOUT_CONTROLLER','Layout Boxes Controller');

@@ -9,10 +9,12 @@
  * @copyright Copyright 2003-2015 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id:  $
+ * @version $Id: Modified in V1.6.0 $
  */
 ?>
 <div class="centerColumn" id="shoppingCartDefault">
+<?php if ($messageStack->size('shopping_cart') > 0) echo $messageStack->output('shopping_cart'); ?>
+
 <?php
   if ($flagHasCartContents) {
 ?>
@@ -26,8 +28,6 @@
 ?>
 
 <h1 id="cartDefaultHeading"><?php echo HEADING_TITLE; ?></h1>
-
-<?php if ($messageStack->size('shopping_cart') > 0) echo $messageStack->output('shopping_cart'); ?>
 
 <?php echo zen_draw_form('cart_quantity', zen_href_link(FILENAME_SHOPPING_CART, 'action=update_product', $request_type), 'post', 'id="shoppingCartForm"'); ?>
 <div id="cartInstructionsDisplay" class="content"><?php echo TEXT_INFORMATION; ?></div>
@@ -129,7 +129,7 @@
 <br class="clearBoth" />
 
 <!--bof shopping cart buttons-->
-<div class="buttonRow forward"><?php echo '<a href="' . zen_href_link(FILENAME_CHECKOUT_SHIPPING, '', 'SSL') . '">' . zen_image_button(BUTTON_IMAGE_CHECKOUT, BUTTON_CHECKOUT_ALT) . '</a>'; ?></div>
+<div class="buttonRow forward"><?php echo '<a href="' . zen_href_link(FILENAME_CHECKOUT_FLOW, '', 'SSL') . '">' . zen_image_button(BUTTON_IMAGE_CHECKOUT, BUTTON_CHECKOUT_ALT) . '</a>'; ?></div>
 <div class="buttonRow back"><?php echo zen_back_link() . zen_image_button(BUTTON_IMAGE_CONTINUE_SHOPPING, BUTTON_CONTINUE_SHOPPING_ALT) . '</a>'; ?></div>
 <?php
 // show update cart button
