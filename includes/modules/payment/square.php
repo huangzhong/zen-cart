@@ -32,7 +32,11 @@ class square extends base
     /**
      * $moduleVersion is the plugin version number
      */
+<<<<<<< HEAD
     public $moduleVersion = '0.92';
+=======
+    public $moduleVersion = '0.94';
+>>>>>>> upstream/v155
     /**
      * $title is the displayed name for this payment method
      *
@@ -107,6 +111,10 @@ class square extends base
                     $this->title .= '<span class="alert">' . ' - NOTE: A NEW VERSION OF THIS PLUGIN IS AVAILABLE. <a href="' . $new_version_details['link'] . '" target="_blank">[Details]</a>' . '</span>';
                 }
             }
+<<<<<<< HEAD
+=======
+            $this->tableCheckup();
+>>>>>>> upstream/v155
         }
 
         // determine order-status for transactions
@@ -558,7 +566,10 @@ class square extends base
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_TIMEOUT, 9);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 9);
+<<<<<<< HEAD
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+=======
+>>>>>>> upstream/v155
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Authorization: Client ' . MODULE_PAYMENT_SQUARE_APPLICATION_SECRET));
         curl_setopt($ch, CURLOPT_USERAGENT, 'Zen Cart token refresh [' . preg_replace('#https?://#', '', HTTP_SERVER) . '] ');
@@ -622,7 +633,10 @@ class square extends base
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_TIMEOUT, 9);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 9);
+<<<<<<< HEAD
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+=======
+>>>>>>> upstream/v155
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
         curl_setopt($ch, CURLOPT_USERAGENT, 'Zen Cart token request [' . preg_replace('#https?://#', '', HTTP_SERVER) . '] ');
@@ -835,14 +849,27 @@ class square extends base
               `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
               `order_id` int(11) UNSIGNED NOT NULL,
               `location_id` varchar(40) NOT NULL,
+<<<<<<< HEAD
               `transaction_id` varchar(40) NOT NULL,
               `tender_id` varchar(40),
+=======
+              `transaction_id` varchar(255) NOT NULL,
+              `tender_id` varchar(64),
+>>>>>>> upstream/v155
               `action` varchar(40),
               `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               PRIMARY KEY (`id`)
             )";
             $db->Execute($sql);
         }
+<<<<<<< HEAD
+=======
+        $fieldOkay1 = (method_exists($sniffer, 'field_type')) ? $sniffer->field_type(TABLE_SQUARE_PAYMENTS, 'transaction_id', 'varchar(255)', false) : false;
+        if ($fieldOkay1 !== true) {
+            $db->Execute("ALTER TABLE " . TABLE_SQUARE_PAYMENTS . " MODIFY transaction_id varchar(255) NOT NULL");
+            $db->Execute("ALTER TABLE " . TABLE_SQUARE_PAYMENTS . " MODIFY tender_id varchar(64)");
+        }
+>>>>>>> upstream/v155
     }
 
     /**
