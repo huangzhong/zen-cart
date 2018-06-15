@@ -3,11 +3,11 @@
  * functions used by payment module class for Paypal IPN payment method
  *
  * @package paymentMethod
- * @copyright Copyright 2003-2013 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @copyright Portions Copyright 2004 DevosC.com
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: Ian Wilson  Mon Oct 28 17:54:33 2013 +0000 Modified in v1.5.2 $
+ * @version $Id: Author: DrByte  Wed Mar 16 16:12:21 2016 -0500 Modified in v1.5.5 $
  */
 
 // Functions for paypal processing
@@ -436,7 +436,7 @@
     }
 
     // send received data back to PayPal for validation
-    $scheme = 'http://';
+    $scheme = 'https://';
     //Parse url
     $web = parse_url($scheme . 'www.paypal.com/cgi-bin/webscr');
     if ((isset($_POST['test_ipn']) && $_POST['test_ipn'] == 1) || MODULE_PAYMENT_PAYPAL_HANDLER == 'sandbox') {
@@ -575,6 +575,12 @@
     $response = curl_exec($ch);
     $commError = curl_error($ch);
     $commErrNo = curl_errno($ch);
+    if ($commErrNo == 35) {
+      curl_setopt($ch, CURLOPT_SSLVERSION, 6);
+      $response = curl_exec($ch);
+      $commError = curl_error($ch);
+      $commErrNo = curl_errno($ch);
+    }
     $commInfo = @curl_getinfo($ch);
     curl_close($ch);
 
@@ -637,14 +643,14 @@
     global $db;
     ipn_debug_email('IPN NOTICE :: Updating order #' . (int)$ordersID . ' to status: ' . (int)$new_status . ' (txn_type: ' . $txn_type . ')');
     $db->Execute("update " . TABLE_ORDERS  . "
-                  set orders_status = '" . (int)$new_status . "'
+                  set orders_status = '" . (int)$new_status . "', last_modified = now()
                   where orders_id = '" . (int)$ordersID . "'");
 
     $sql_data_array = array('orders_id' => (int)$ordersID,
                             'orders_status_id' => (int)$new_status,
                             'date_added' => 'now()',
                             'comments' => 'PayPal status: ' . $_POST['payment_status'] . ' ' . ' @ ' . $_POST['payment_date'] . (($_POST['parent_txn_id'] !='') ? "\n" . ' Parent Trans ID:' . $_POST['parent_txn_id'] : '') . "\n" . ' Trans ID:' . $_POST['txn_id'] . "\n" . ' Amount: ' . $_POST['mc_gross'] . ' ' . $_POST['mc_currency'],
-                            'customer_notified' => false
+                            'customer_notified' => (int)false,
                            );
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
     ipn_debug_email('IPN NOTICE :: Update complete.');
@@ -708,8 +714,8 @@
           if ($order_totals[$i]['code'] == 'ot_subtotal') $optionsST['subtotal'] = round($order_totals[$i]['value'],2);
         } else {
           // handle other order totals:
-          global $$order_totals[$i]['code'];
-          if ((substr($order_totals[$i]['text'], 0, 1) == '-') || (isset($$order_totals[$i]['code']->credit_class) && $$order_totals[$i]['code']->credit_class == true)) {
+          global ${$order_totals[$i]['code']};
+          if ((substr($order_totals[$i]['text'], 0, 1) == '-') || (isset(${$order_totals[$i]['code']}->credit_class) && ${$order_totals[$i]['code']}->credit_class == true)) {
             // handle credits
             $creditsApplied += round($order_totals[$i]['value'], 2);
           } else {
@@ -784,7 +790,7 @@
       } // endif attribute-info
 
       // PayPal can't handle fractional-quantity values, so convert it to qty 1 here
-      if ($order->products[$i]['qty'] > 1 && ($order->products[$i]['qty'] != (int)$order->products[$i]['qty'] || $flag_treat_as_partial)) {
+      if (is_float($order->products[$i]['qty']) && ($order->products[$i]['qty'] != (int)$order->products[$i]['qty'] || $flag_treat_as_partial)) {
         $optionsLI["item_name_$k"] = '('.$order->products[$i]['qty'].' x ) ' . $optionsLI["item_name_$k"];
         // zen_add_tax already handles whether DISPLAY_PRICES_WITH_TAX is set
         $optionsLI["amount_$k"] = zen_round(zen_round(zen_add_tax($order->products[$i]['final_price'], $order->products[$i]['tax']), $decimals) * $order->products[$i]['qty'], $decimals);
@@ -916,7 +922,7 @@
 
     // check subtotals
     if ((strval($optionsST['subtotal']) > 0 && strval($subTotalLI) > 0 && strval($subTotalLI) != strval($optionsST['subtotal'])) || strval($subTotalLI) - strval($sumOfLineItems) != 0) {
-      $ipn_logging('getLineItemDetails 5', 'Line-item subtotals do not add up properly. Line-item-details skipped.' . "\n" . strval($sumOfLineItems) . ' ' . strval($subTotalLI) . ' ' . print_r(array_merge($optionsST, $optionsLI), true));
+      ipn_logging('getLineItemDetails 5', 'Line-item subtotals do not add up properly. Line-item-details skipped.' . "\n" . strval($sumOfLineItems) . ' ' . strval($subTotalLI) . ' ' . print_r(array_merge($optionsST, $optionsLI), true));
       $optionsLI = array();
       $optionsLI["item_name_0"] = MODULE_PAYMENT_PAYPAL_PURCHASE_DESCRIPTION_TITLE;
       $optionsLI["amount_0"]  = $sumOfLineItems = $subTotalLI = $optionsST['subtotal'];
@@ -957,18 +963,18 @@
     // tidy up all values so that they comply with proper format (number_format(xxxx,2) for PayPal US use )
     if (!defined('PAYPALWPP_SKIP_LINE_ITEM_DETAIL_FORMATTING') || PAYPALWPP_SKIP_LINE_ITEM_DETAIL_FORMATTING != 'true' || in_array($order->info['currency'], array('JPY', 'NOK', 'HUF', 'TWD'))) {
       if (is_array($optionsST)) foreach ($optionsST as $key=>$value) {
-        $optionsST[$key] = number_format($value, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2));
+        $optionsST[$key] = round($value, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2));
       }
       if (is_array($optionsLI)) foreach ($optionsLI as $key=>$value) {
         if (substr($key, 0, 8) == 'tax_' && ($optionsLI[$key] == '' || $optionsLI[$key] == 0)) {
           unset($optionsLI[$key]);
         } else {
-          if (strstr($key, 'amount')) $optionsLI[$key] = number_format($value, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2));
+          if (strstr($key, 'amount')) $optionsLI[$key] = round($value, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2));
         }
       }
     }
 
-    ipn_logging('getLineItemDetails 8', 'checking subtotals... ' . "\n" . print_r(array_merge(array('calculated total'=>number_format($stAll, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2))), $optionsST), true) . "\n-------------------\ndifference: " . ($stDiff + 0) . '  (abs+rounded: ' . ($stDiffRounded + 0) . ')');
+    ipn_logging('getLineItemDetails 8', 'checking subtotals... ' . "\n" . print_r(array_merge(array('calculated total'=>round($stAll, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2))), $optionsST), true) . "\n-------------------\ndifference: " . ($stDiff + 0) . '  (abs+rounded: ' . ($stDiffRounded + 0) . ')');
 
     if ( $stDiffRounded != 0) {
       ipn_logging('getLineItemDetails 9', 'Subtotals Bad. Skipping line-item/subtotal details');
