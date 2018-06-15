@@ -13,7 +13,7 @@ if (!defined('IS_ADMIN_FLAG')) {
 }
 
 // initialize vars
-$categories_products_id_list = array();
+$categories_products_id_list = '';
 $list_of_products = '';
 $specials_index_query = '';
 $display_limit = '';
@@ -87,3 +87,4 @@ if ($num_products_count > 0) {
     $zc_show_specials = true;
   }
 }
+?>

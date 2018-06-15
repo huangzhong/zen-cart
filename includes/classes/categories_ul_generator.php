@@ -55,10 +55,6 @@ class zen_categories_ul_generator {
     
     function buildBranch($parent_id, $level = 0, $submenu=true, $parent_link='')
     {
-<<<<<<< HEAD
-=======
-        $level = (int)$level;
->>>>>>> upstream/v155
         $result = sprintf($this->parent_group_start_string, ($submenu==true) ? ' class="level'. ($level+1) . '"' : '' );
         
         if (($this->data[$parent_id])) {

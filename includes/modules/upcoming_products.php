@@ -13,7 +13,7 @@ if (!defined('IS_ADMIN_FLAG')) {
 }
 
 // initialize vars
-$categories_products_id_list = array();
+$categories_products_id_list = '';
 $list_of_products = '';
 $expected_query = '';
 

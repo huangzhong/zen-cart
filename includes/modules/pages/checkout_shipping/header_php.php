@@ -201,7 +201,6 @@ if (isset($_SESSION['cart']->cartID)) {
     $checkval = $_SESSION['shipping']['id'];
     if (!in_array($checkval, $checklist)) {
       $messageStack->add('checkout_shipping', ERROR_PLEASE_RESELECT_SHIPPING_METHOD, 'error');
-      unset($_SESSION['shipping']); // Prepare $_SESSION to determine lowest available price/force a default selection mc12345678 2018-04-03
     }
   }
 
