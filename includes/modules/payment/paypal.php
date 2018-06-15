@@ -3,10 +3,10 @@
  * paypal.php payment module class for PayPal Payments Standard (IPN) method
  *
  * @package paymentMethod
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Modified in v1.5.5 $
+ * @version $Id: Author: DrByte  Tue Feb 16 22:22:40 2016 -0500 Modified in v1.5.5 $
  */
 
 define('MODULE_PAYMENT_PAYPAL_TAX_OVERRIDE', 'true');
@@ -267,7 +267,7 @@ class paypal extends base {
                    'item_name' => MODULE_PAYMENT_PAYPAL_PURCHASE_DESCRIPTION_TITLE,
                    'item_number' => MODULE_PAYMENT_PAYPAL_PURCHASE_DESCRIPTION_ITEMNUM,
                    //'num_cart_items' => sizeof($order->products),
-                   'amount' => number_format($this->transaction_amount, $currencies->get_decimal_places($my_currency)),
+                   'amount' => round($this->transaction_amount, $currencies->get_decimal_places($my_currency)),
                    'shipping' => '0.00',
                     );
     if (MODULE_PAYMENT_PAYPAL_TAX_OVERRIDE == 'true') $optionsAggregate['tax'] = '0.00';
@@ -471,14 +471,7 @@ class paypal extends base {
       ipn_debug_email('PDT NOTICE :: paypal table updated: ' . print_r($sql_data_array, true));
     }
   }
-  /**
-   * Used to display error message details
-   *
-   * @return boolean
-    */
-  function output_error() {
-    return false;
-  }
+
   /**
    * Check to see whether module is installed
    *

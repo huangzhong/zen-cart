@@ -3,10 +3,10 @@
  * ipn_main_handler.php callback handler for PayPal IPN notifications
  *
  * @package paymentMethod
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Tue Aug 28 16:48:39 2012 -0400 Modified in v1.5.5 $
+ * @version $Id: Author: DrByte  Tue Oct 13 15:33:13 2015 -0400 Modified in v1.5.5 $
  */
 if (!defined('TEXT_RESELECT_SHIPPING')) define('TEXT_RESELECT_SHIPPING', 'You have changed the items in your cart since shipping was last calculated, and costs may have changed. Please verify/re-select your shipping method.');
 
@@ -73,12 +73,12 @@ if (isset($_GET['type']) && $_GET['type'] == 'ec') {
       // We have not gone to PayPal's website yet in order to grab
       // a token at this time.  This will send the customer over to PayPal's
       // website to login and return a token
-      $$paypalwpp_module->ec_step1();
+      ${$paypalwpp_module}->ec_step1();
     } else {
       // This will push on the second step of the paypal ec payment
       // module, as we already have a PayPal express checkout token
       // at this point.
-      $$paypalwpp_module->ec_step2();
+      ${$paypalwpp_module}->ec_step2();
     }
   }
 ?>
@@ -104,7 +104,7 @@ Processing...
    * detect type of transaction
    */
   $isECtransaction = ((isset($_POST['txn_type']) && $_POST['txn_type']=='express_checkout') || (isset($_POST['custom']) && in_array(substr($_POST['custom'], 0, 3), array('EC-', 'DP-', 'WPP')))); /*|| $_POST['txn_type']=='cart'*/
-  $isDPtransaction = (isset($_POST['custom']) && in_array(substr($_POST['custom'], 0, 3), array('DP-', 'WPP')));
+  $isDPtransaction = (isset($_POST['custom']) && in_array(substr($_POST['custom'], 0, 3), array('DP-', 'WPP', 'PF-')));
   /**
    * set paypal-specific application_top parameters
    */
@@ -180,6 +180,12 @@ Processing...
   $parentLookup = $txn_type;
 
   ipn_debug_email('Breakpoint: 4 - ' . 'Details:  txn_type=' . $txn_type . '    ordersID = '. $ordersID . '  IPN_id=' . $paypalipnID . "\n\n" . '   Relevant data from POST:' . "\n     " . 'txn_type = ' . $txn_type . "\n     " . 'parent_txn_id = ' . ($_POST['parent_txn_id'] =='' ? 'None' : $_POST['parent_txn_id']) . "\n     " . 'txn_id = ' . $_POST['txn_id']);
+
+  // ignore auth_status == 'Expired'
+  if ($_POST['auth_status'] === 'Expired' && $_POST['txn_type'] === 'web_accept') {
+    ipn_debug_email('NOTICE :: IPN Processing Aborted -- we do not need to do anything with an "Expired" auth notification.');
+    die();
+  }
 
   if (!$isECtransaction && !isset($_POST['parent_txn_id']) && $txn_type != 'cleared-echeck') {
     if (defined('MODULE_PAYMENT_PAYPAL_PDTTOKEN') && MODULE_PAYMENT_PAYPAL_PDTTOKEN != '') {

@@ -3,10 +3,10 @@
  * shipping class
  *
  * @package classes
- * @copyright Copyright 2003-2014 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: Ian Wilson  Modified in v1.6.0 $
+ * @version $Id: Author: DrByte  Sun Oct 18 01:50:12 2015 -0400 Modified in v1.5.5 $
  */
 if (!defined('IS_ADMIN_FLAG')) {
   die('Illegal Access');
@@ -98,12 +98,12 @@ class shipping extends base {
       $shipping_weight = $total_weight;
 
       $za_tare_array = preg_split("/[:,]/" , str_replace(' ', '', SHIPPING_BOX_WEIGHT));
-      $zc_tare_percent= $za_tare_array[0];
-      $zc_tare_weight= $za_tare_array[1];
+      $zc_tare_percent= (float)$za_tare_array[0];
+      $zc_tare_weight= (float)$za_tare_array[1];
 
       $za_large_array = preg_split("/[:,]/" , str_replace(' ', '', SHIPPING_BOX_PADDING));
-      $zc_large_percent= $za_large_array[0];
-      $zc_large_weight= $za_large_array[1];
+      $zc_large_percent= (float)$za_large_array[0];
+      $zc_large_weight= (float)$za_large_array[1];
 
       // SHIPPING_BOX_WEIGHT = tare
       // SHIPPING_BOX_PADDING = Large Box % increase

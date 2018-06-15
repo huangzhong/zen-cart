@@ -3,10 +3,10 @@
  * module to process a completed checkout
  *
  * @package procedureCheckout
- * @copyright Copyright 2003-2011 Zen Cart Development Team
+ * @copyright Copyright 2003-2017 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: checkout_process.php 18697 2011-05-04 14:35:20Z wilt $
+ * @version $Id: Author: DrByte  July 2017 Modified in v1.5.6 $
  */
 if (!defined('IS_ADMIN_FLAG')) {
   die('Illegal Access');
@@ -32,10 +32,11 @@ if (!strstr($_SERVER['HTTP_REFERER'], FILENAME_CHECKOUT_CONFIRMATION)) {
 }
 
 // BEGIN CC SLAM PREVENTION
+$slamming_threshold = 3;
 if (!isset($_SESSION['payment_attempt'])) $_SESSION['payment_attempt'] = 0;
 $_SESSION['payment_attempt']++;
-$zco_notifier->notify('NOTIFY_CHECKOUT_SLAMMING_ALERT');
-if ($_SESSION['payment_attempt'] > 3) {
+$zco_notifier->notify('NOTIFY_CHECKOUT_SLAMMING_ALERT', $_SESSION['payment_attempt'], $slamming_threshold);
+if ($_SESSION['payment_attempt'] > $slamming_threshold) {
   $zco_notifier->notify('NOTIFY_CHECKOUT_SLAMMING_LOCKOUT');
   $_SESSION['cart']->reset(TRUE);
   zen_session_destroy();
@@ -48,12 +49,13 @@ if (!isset($credit_covers)) $credit_covers = FALSE;
 // load selected payment module
 require(DIR_WS_CLASSES . 'payment.php');
 $payment_modules = new payment($_SESSION['payment']);
-// load the selected shipping module
-require(DIR_WS_CLASSES . 'shipping.php');
-$shipping_modules = new shipping($_SESSION['shipping']);
 
 require(DIR_WS_CLASSES . 'order.php');
 $order = new order;
+
+// load the selected shipping module
+require(DIR_WS_CLASSES . 'shipping.php');
+$shipping_modules = new shipping($_SESSION['shipping']);
 
 // prevent 0-entry orders from being generated/spoofed
 if (sizeof($order->products) < 1) {

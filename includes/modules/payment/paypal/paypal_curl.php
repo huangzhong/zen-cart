@@ -3,9 +3,9 @@
  * paypal_curl.php communications class for PayPal Express Checkout / Website Payments Pro / Payflow Pro payment methods
  *
  * @package paymentMethod
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Modified in v1.5.5 $
+ * @version $Id: Author: DrByte  Wed Mar 16 16:12:21 2016 -0500 Modified in v1.5.5 $
  */
 
 /**
@@ -251,14 +251,14 @@ class paypal_curl extends base {
       $values['ORIGID'] = $txnID;
       $values['TENDER'] = 'C';
       $values['TRXTYPE'] = 'C';
-      $values['AMT'] = number_format((float)$amount, 2);
+      $values['AMT'] = round((float)$amount, 2);
       if ($note != '') $values['COMMENT2'] = $note;
     } elseif ($this->_mode == 'nvp') {
       $values['TRANSACTIONID'] = $txnID;
       if ($amount != 'Full' && (float)$amount > 0) {
         $values['REFUNDTYPE'] = 'Partial';
         $values['CURRENCYCODE'] = $curCode;
-        $values['AMT'] = number_format((float)$amount, 2);
+        $values['AMT'] = round((float)$amount, 2);
       } else {
         $values['REFUNDTYPE'] = 'Full';
       }
@@ -291,7 +291,7 @@ class paypal_curl extends base {
    */
   function DoAuthorization($txnID, $amount = 0, $currency = 'USD', $entity = 'Order') {
     $values['TRANSACTIONID'] = $txnID;
-    $values['AMT'] = number_format($amount, 2, '.', ',');
+    $values['AMT'] = round((float)$amount, 2);
     $values['TRANSACTIONENTITY'] = $entity;
     $values['CURRENCYCODE'] = $currency;
     return $this->_request($values, 'DoAuthorization');
@@ -304,7 +304,7 @@ class paypal_curl extends base {
    */
   function DoReauthorization($txnID, $amount = 0, $currency = 'USD') {
     $values['AUTHORIZATIONID'] = $txnID;
-    $values['AMT'] = number_format($amount, 2, '.', ',');
+    $values['AMT'] = round((float)$amount, 2);
     $values['CURRENCYCODE'] = $currency;
     return $this->_request($values, 'DoReauthorization');
   }
@@ -325,7 +325,7 @@ class paypal_curl extends base {
     } elseif ($this->_mode == 'nvp') {
       $values['AUTHORIZATIONID'] = $txnID;
       $values['COMPLETETYPE'] = $captureType;
-      $values['AMT'] = number_format((float)$amount, 2);
+      $values['AMT'] = round((float)$amount, 2);
       $values['CURRENCYCODE'] = $currency;
       if ($invNum != '') $values['INVNUM'] = $invNum;
       if ($note != '') $values['NOTE'] = $note;
@@ -451,6 +451,14 @@ class paypal_curl extends base {
     $response = curl_exec($ch);
     $commError = curl_error($ch);
     $commErrNo = curl_errno($ch);
+
+    if ($commErrNo == 35) {
+      trigger_error('ALERT: Could not process PayPal transaction via normal CURL communications. Your server is encountering connection problems using TLS 1.2 ... because your hosting company cannot autonegotiate a secure protocol with modern security protocols. We will try the transaction again, but this is resulting in a very long delay for your customers, and could result in them attempting duplicate purchases. Get your hosting company to update their TLS capabilities ASAP.', E_USER_NOTICE);
+      curl_setopt($ch, CURLOPT_SSLVERSION, 6); // Using the defined value of 6 instead of CURL_SSLVERSION_TLSv1_2 since these outdated hosts also don't properly implement this constant either.
+      $response = curl_exec($ch);
+      $commError = curl_error($ch);
+      $commErrNo = curl_errno($ch);
+    }
 
     $commInfo = @curl_getinfo($ch);
     curl_close($ch);

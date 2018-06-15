@@ -1,10 +1,10 @@
 <?php
 /**
  * @package admin
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: New in v1.5.5 $
+ * @version $Id: Author: DrByte  Fri Feb 19 20:48:40 2016 -0500 New in v1.5.5 $
  */
 
 if (isset($_GET['action']) && $_GET['action'] == 'update') {
@@ -42,13 +42,15 @@ if (isset($_GET['action']) && $_GET['action'] == 'update') {
         $db->execute($sql);
         $store_country = (int)($_POST['zone_country_id']);
     }
+    $store_zone = '';
     if (isset($_POST['zone_id']) && $_POST['zone_id'] != '') {
-        $sql = "UPDATE " . TABLE_CONFIGURATION . " set configuration_value = :configValue:
-                    WHERE configuration_key = 'STORE_ZONE'";
-        $sql = $db->bindVars($sql, ':configValue:', $_POST['zone_id'], 'integer');
-        $db->execute($sql);
         $store_zone = (int)($_POST['zone_id']);
     }
+    $sql = "UPDATE " . TABLE_CONFIGURATION . " set configuration_value = :configValue:
+                    WHERE configuration_key = 'STORE_ZONE'";
+    $sql = $db->bindVars($sql, ':configValue:', $store_zone, 'integer');
+    $db->execute($sql);
+
     if (isset($_POST['store_address']) && $_POST['store_address'] != '') {
         $sql = "UPDATE " . TABLE_CONFIGURATION . " set configuration_value = :configValue:
                     WHERE configuration_key = 'STORE_NAME_ADDRESS'";
@@ -118,7 +120,7 @@ $zone_string = zen_draw_pull_down_menu('zone_id', zen_get_country_zones($store_c
         // -->
     </script>
 </head>
-<body onLoad="init()">
+<body id="setupWizardPage" onLoad="init()">
 <!-- header //-->
 <?php require(DIR_WS_INCLUDES . 'header.php'); ?>
 <!-- header_eof //-->
@@ -129,7 +131,7 @@ $zone_string = zen_draw_pull_down_menu('zone_id', zen_get_country_zones($store_c
     <?php echo zen_draw_form('setup_wizard', FILENAME_DEFAULT, 'action=update', 'post', 'id="setupWizardForm"'); ?>
     <div>
         <label for="store_name"><?php echo TEXT_STORE_NAME ?></label>
-        <?php echo zen_draw_input_field('store_name', $store_name, ' id="store_name"');?>
+        <?php echo zen_draw_input_field('store_name', $store_name, ' id="store_name" autofocus="autofocus"');?>
     </div>
     <br>
     <div>
@@ -139,7 +141,7 @@ $zone_string = zen_draw_pull_down_menu('zone_id', zen_get_country_zones($store_c
     <br>
     <div>
         <label for="store_owner_email"><?php echo TEXT_STORE_OWNER_EMAIL ?></label>
-        <?php echo zen_draw_input_field('store_owner_email', $store_owner_email, ' id="store_owner_email"');?>
+        <?php echo zen_draw_input_field('store_owner_email', $store_owner_email, ' id="store_owner_email"', null, 'email');?>
     </div>
     <br>
     <div>
@@ -158,7 +160,7 @@ $zone_string = zen_draw_pull_down_menu('zone_id', zen_get_country_zones($store_c
     </div>
     <br>
     <div>
-        <?php echo zen_image_submit('button_update.gif', IMAGE_UPDATE, 'id="button"') ?>
+      <input type="submit" class="button submit" id="button" value="<?php echo IMAGE_UPDATE; ?>">
     </div>
     </form>
 </div>

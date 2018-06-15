@@ -1,10 +1,10 @@
 <?php
 /**
  * @package admin
- * @copyright Copyright 2003-2014 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Modified in v1.5.4 $
+ * @version $Id: Author: DrByte  Sat Oct 17 21:26:10 2015 -0400 Modified in v1.5.5 $
  */
 
 // Default refresh interval (0=off).  NOTE: Using automated refresh may put you in breach of PCI Compliance
@@ -470,7 +470,9 @@ function zen_check_minutes($the_time_last_click) {
   }
 ?>
               <tr>
-                <td class="smallText" colspan="8"><?php echo sprintf(TEXT_NUMBER_OF_CUSTOMERS, $total_sess); print "<br />Duplicate IP Addresses: $total_dupes<br />Total Unique Users: $total_cust.";?></td>
+                <td class="smallText" colspan="8"><?php echo sprintf(TEXT_NUMBER_OF_CUSTOMERS, $total_sess); ?><br />
+                <?php echo TEXT_DUPLICATE_IPS . $total_dupes; ?><br />
+                <?php echo TEXT_TOTAL_UNIQUE_USERS . $total_cust;?>.</td>
               </tr>
             </table></td>
 <?php

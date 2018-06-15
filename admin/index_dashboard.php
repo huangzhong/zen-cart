@@ -1,10 +1,10 @@
 <?php
 /**
  * @package admin
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: New in v1.5.5 $
+ * @version $Id: Author: DrByte  Fri Feb 26 00:34:34 2016 -0500 New in v1.5.5 $
  */
 $customers = $db->Execute("select count(*) as count from " . TABLE_CUSTOMERS);
 
@@ -21,7 +21,7 @@ $counter_query = "select startdate, counter from " . TABLE_COUNTER;
 $counter = $db->Execute($counter_query);
 $counter_startdate = $counter->fields['startdate'];
 //  $counter_startdate_formatted = strftime(DATE_FORMAT_LONG, mktime(0, 0, 0, substr($counter_startdate, 4, 2), substr($counter_startdate, -2), substr($counter_startdate, 0, 4)));
-$counter_startdate_formatted = strftime(DATE_FORMAT_SHORT, mktime(0, 0, 0, substr($counter_startdate, 4, 2), substr($counter_startdate, -2), substr($counter_startdate, 0, 4)));
+if ($counter->RecordCount()) $counter_startdate_formatted = strftime(DATE_FORMAT_SHORT, mktime(0, 0, 0, substr($counter_startdate, 4, 2), substr($counter_startdate, -2), substr($counter_startdate, 0, 4)));
 
 $specials = $db->Execute("select count(*) as count from " . TABLE_SPECIALS . " where status= '0'");
 $specials_act = $db->Execute("select count(*) as count from " . TABLE_SPECIALS . " where status= '1'");
@@ -36,10 +36,11 @@ $salemaker_act = $db->Execute("select count(*) as count from " . TABLE_SALEMAKER
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=<?php echo CHARSET; ?>">
     <title><?php echo TITLE; ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <script language="JavaScript" src="includes/menu.js" type="text/JavaScript"></script>
     <link href="includes/stylesheet.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" type="text/css" href="includes/cssjsmenuhover.css" media="all" id="hoverJS" />
+    <script language="JavaScript" src="includes/menu.js" type="text/javascript"></script>
     <script type="text/javascript">
         <!--
             function init()
@@ -55,17 +56,19 @@ $salemaker_act = $db->Execute("select count(*) as count from " . TABLE_SALEMAKER
         // -->
     </script>
 </head>
-<body onLoad="init()">
+<body class="indexDashboard" onLoad="init()">
 <!-- header //-->
 <?php require(DIR_WS_INCLUDES . 'header.php'); ?>
 <!-- header_eof //-->
 
-        <div id="colone">
+<div id="colone" class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
     <div class="reportBox">
         <div class="header"><?php echo BOX_TITLE_STATISTICS; ?> </div>
         <?php
+        if ($counter->RecordCount()) {
         echo '<div class="row"><span class="left">' . BOX_ENTRY_COUNTER_DATE . '</span><span class="rigth"> ' . $counter_startdate_formatted . '</span></div>';
         echo '<div class="row"><span class="left">' . BOX_ENTRY_COUNTER . '</span><span class="rigth"> ' . $counter->fields['counter'] . '</span></div>';
+        }
         echo '<div class="row"><span class="left">' . BOX_ENTRY_CUSTOMERS . '</span><span class="rigth"> ' . $customers->fields['count'] . '</span></div>';
         echo '<div class="row"><span class="left">' . BOX_ENTRY_PRODUCTS . ' </span><span class="rigth">' . $products->fields['count'] . '</span></div>';
         echo '<div class="row"><span class="left">' . BOX_ENTRY_PRODUCTS_OFF . ' </span><span class="rigth">' . $products_off->fields['count'] . '</span></div>';
@@ -100,7 +103,7 @@ $salemaker_act = $db->Execute("select count(*) as count from " . TABLE_SALEMAKER
         ?>
     </div>
 </div>
-<div id="coltwo">
+<div id="coltwo" class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
     <div class="reportBox">
         <div class="header"><?php echo BOX_ENTRY_NEW_CUSTOMERS; ?> </div>
         <?php  $customers = $db->Execute("select c.customers_id as customers_id, c.customers_firstname as customers_firstname, c.customers_lastname as customers_lastname, c.customers_email_address as customers_email_address, a.customers_info_date_account_created as customers_info_date_account_created, a.customers_info_id from " . TABLE_CUSTOMERS . " c left join " . TABLE_CUSTOMERS_INFO . " a on c.customers_id = a.customers_info_id order by a.customers_info_date_account_created DESC limit 5");
@@ -134,7 +137,7 @@ $salemaker_act = $db->Execute("select count(*) as count from " . TABLE_SALEMAKER
 
     </div>
 </div>
-<div id="colthree">
+<div id="colthree" class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
     <div class="reportBox">
         <div class="header"><?php echo BOX_ENTRY_NEW_ORDERS; ?> </div>
         <?php  $orders = $db->Execute("select o.orders_id as orders_id, o.customers_name as customers_name, o.customers_id, o.date_purchased as date_purchased, o.currency, o.currency_value, ot.class, ot.text as order_total from " . TABLE_ORDERS . " o left join " . TABLE_ORDERS_TOTAL . " ot on (o.orders_id = ot.orders_id and class = 'ot_total') order by orders_id DESC limit 5");

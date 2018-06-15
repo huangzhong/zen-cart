@@ -1,7 +1,7 @@
 #
-# @copyright Copyright 2003-2015 Zen Cart Development Team
+# @copyright Copyright 2003-2016 Zen Cart Development Team
 # @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
-# @version GIT: $Id: DrByte  Modified in v1.5.5 $
+# @version $Id: Author: DrByte  Tue Oct 13 14:49:06 2015 -0400 Modified in v1.5.5 $
 #
 # This is used with Apache WebServers
 #
@@ -19,21 +19,36 @@
 
 # deny *everything*
 <FilesMatch ".*">
-  Order Allow,Deny
-  Deny from all
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order Allow,Deny
+    Deny from all
+  </IfModule>
 </FilesMatch>
 
 # but now allow just *certain* necessary files:
 <FilesMatch "(?i).*\.(js|css|html?|ico|jpe?g|gif|webp|png|swf|flv|xml|xsl|otf|ttf|woff|eot|svg|map)$">
-  Order Allow,Deny
-  Allow from all
+  <IfModule mod_authz_core.c>
+    Require all granted
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order Allow,Deny
+    Allow from all
+  </IfModule>
 </FilesMatch>
 
 IndexIgnore */*
 
 <limit POST PUT>
-order deny,allow
-deny from All
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order Allow,Deny
+    Deny from all
+  </IfModule>
 </limit>
 
 

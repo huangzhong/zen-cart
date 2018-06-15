@@ -7,15 +7,24 @@
  *   i=1 -- in conjunction with [d] or [r], will show the detailed curlinfo certificate data from the host being connected to. Helpful for advanced debugging.
  *
  * @package utilities
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Modified in v1.5.5 $
+ * @version $Id: Author: DrByte  Wed Mar 16 16:12:21 2016 -0500 Modified in v1.5.5 $
  */
 // no caching
 header('Cache-Control: no-cache, no-store, must-revalidate');
 ?>
 <html><head><meta name="robots" content="noindex, nofollow" /><title>Communications Test</title></head>
 <body>
+<p>
+<?php
+    $ch = curl_init('https://www.howsmyssl.com/a/check');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $data = curl_exec($ch);
+    curl_close($ch);
+    $json = json_decode($data);
+    echo "Connection uses " . $json->tls_version ."\n";
+?></p>
 <p>Testing communications to various destinations. This is a simple diagnostic to determine whether your server can connect to common destinations.<br>
 <em>For advanced "details" mode, add </em><strong>?details=on</strong><em> to the URL.</em></p>
 <p><em>(Another resource you may find useful for testing your server's overall customer-facing SSL configuration: <a href="https://www.ssllabs.com/ssltest/index.html" target="_blank">https://www.ssllabs.com/ssltest/index.html</a> )</em></p>
@@ -52,19 +61,20 @@ if (isset($_GET['old']) && $_GET['old'] == '1') {
 }
 
 echo 'Connecting to UPS (port 80)...<br>';
+doCurlTest('http://www.ups.com/using/services/rave/qcostcgi.cgi');
 dofsockTest('www.ups.com', 80);
 
-echo 'Connecting to UPSXML (SSL) (wwwcie.ups.com) ...<br>';
-doCurlTest('https://wwwcie.ups.com/ups.app/xml/Rate');
-
-echo 'Connecting to UPSXML (SSL) (www.ups.com) ...<br>';
-doCurlTest('https://www.ups.com/ups.app/xml/Rate');
-
-echo 'Connecting to UPSXML (SSL) (onlinetools.ups.com) ...<br>';
+echo 'Connecting to UPSXML (onlinetools.ups.com) ...<br>';
 doCurlTest('https://onlinetools.ups.com/ups.app/xml/Rate');
+
+echo 'Connecting to UPSXML (sandbox) ...<br>';
+doCurlTest('https://wwwcie.ups.com/ups.app/xml/Rate');
 
 echo 'Connecting to FedEx (port 80)...<br>';
 dofsockTest('fedex.com', 80);
+
+echo 'Connecting to Canada Post REST API (SSL) ...<br>';
+doCurlTest('https://ct.soa-gw.canadapost.ca/rs/ship/price');
 
 echo 'Connecting to PayPal IPN (port 443)...<br>';
 dofsockTest('www.paypal.com', 443);
@@ -74,9 +84,13 @@ echo 'Connecting to PayPal IPN (port 443) Sandbox ...<br>';
 dofsockTest('www.sandbox.paypal.com', 443);
 doCurlTest('https://www.sandbox.paypal.com/cgi-bin/webscr');
 
-// echo 'Connecting to PayPal IPN (port 443) Sandbox ...<br>';
-// dofsockTest('ipnpb.paypal.com', 443);
-// doCurlTest('https://ipnpb.paypal.com');
+//echo 'Connecting to PayPal IPN Postback ...<br>';
+//dofsockTest('ipnpb.paypal.com', 443);
+//doCurlTest('https://ipnpb.paypal.com');
+//
+//echo 'Connecting to PayPal IPN Postback (Sandbox)...<br>';
+//dofsockTest('ipnpb.sandbox.paypal.com', 443);
+//doCurlTest('https://ipnpb.sandbox.paypal.com');
 
 echo 'Connecting to PayPal Express/Pro Server ...<br>';
 doCurlTest('https://api-3t.paypal.com/nvp');
@@ -87,8 +101,17 @@ doCurlTest('https://api-3t.sandbox.paypal.com/nvp');
 echo 'Connecting to PayPal Payflowpro Server ...<br>';
 doCurlTest('https://payflowpro.paypal.com/transaction');
 
+echo 'Connecting to PayPal Payflowpro Pilot/Sandbox Server ...<br>';
+doCurlTest('https://pilot-payflowpro.paypal.com/transaction');
+
+echo 'Connecting to PayPal TLSTest Server ...<br>';
+doCurlTest('https://tlstest.paypal.com/transaction');
+
 echo 'Connecting to Cardinal Commerce 3D-Secure Server ...<br>';
 doCurlTest('https://paypal.cardinalcommerce.com/maps/processormodule.asp');
+
+echo 'Connecting to Square Payments Server ...<br>';
+doCurlTest('https://connect.squareup.com');
 
 echo 'Connecting to AuthorizeNet Production Server ...<br>';
 doCurlTest('https://secure.authorize.net/gateway/transact.dll');
@@ -99,8 +122,17 @@ doCurlTest('https://test.authorize.net/gateway/transact.dll');
 echo 'Connecting to First Data GGe4 server (SSL)...<br>';
 doCurlTest('https://checkout.globalgatewaye4.firstdata.com/payment');
 
-echo 'Connecting to LinkPointAPI server (port 1129)...<br>';
-doCurlTest('https://secure.linkpt.net/LSGSXML:1129');
+echo 'Connecting to Payeezy Processing Server...<br>';
+doCurlTest('https://api.payeezy.com/v1/transactions');
+
+echo 'Connecting to Payeezy Sandbox Server...<br>';
+doCurlTest('https://api-cert.payeezy.com/v1/transactions');
+
+echo 'Connecting to Elavon Server...<br>';
+doCurlTest('https://www.myvirtualmerchant.com/VirtualMerchant/process.do');
+
+echo 'Connecting to Elavon Sandbox Server...<br>';
+doCurlTest('https://demo.myvirtualmerchant.com/VirtualMerchantDemo/process.do');
 
 ?>
 
@@ -140,17 +172,29 @@ function doCurlTest($url = 'http://s3.amazonaws.com/zencart-curltest/endpoint', 
   curl_setopt($ch, CURLOPT_FRESH_CONNECT, TRUE);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
   curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-  curl_setopt($ch, CURLOPT_USERAGENT, 'Zen Cart(tm) - CURL TEST');
+  curl_setopt($ch, CURLOPT_USERAGENT, 'Zen Cart(tm) - CURL TEST v155');
 
   if (isset($_GET['i'])) curl_setopt($ch, CURLOPT_CERTINFO, TRUE);
 
-//  curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+//  curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2); // not directly implemented here, because it is more future-proof and therefore generally more secure to allow Curl to autonegotiate the best mutually-supported protocol, by not specifying CURLOPT_SSLVERSION at all.
+
 //  curl_setopt($ch, CURLOPT_CAINFO, '/local/path/to/cacert.pem'); // for offline testing, this file can be obtained from http://curl.haxx.se/docs/caextract.html ... should never be used in production!
 
 
   $result = curl_exec($ch);
   $errtext = curl_error($ch);
   $errnum = curl_errno($ch);
+  // check for curl TLS version problem, and resubmit  (common with outdated hosts like HostGator)
+  if (in_array($errnum, array(35))) {
+    echo $errorMessage . $errnum . ': ' . $errtext;
+    echo '<br><p style="color:red;"><strong>Error 35 often means that the TLS/SSL connection capabilities of your server are outdated and your server administrator is behind schedule applying security updates, thus preventing the ability to connect to 3rd-party services using more modern security for communications.</strong></p>';
+    echo 'Testing again with less security...<br>';
+    curl_setopt($ch, CURLOPT_SSLVERSION, 6); // Using the defined value of 6 instead of CURL_SSLVERSION_TLSv1_2 since these outdated hosts also don't properly implement this constant either.
+    $result = curl_exec($ch);
+    $errtext = curl_error($ch);
+    $errnum = curl_errno($ch);
+  }
+
   // check for common certificate errors, and resubmit
   if (in_array($errnum, array(60,61))) {
     echo $errorMessage . $errnum . ': ' . $errtext;

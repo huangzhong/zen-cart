@@ -3,10 +3,10 @@
  * authorize.net echeck payment method class
  *
  * @package paymentMethod
- * @copyright Copyright 2003-2014 Zen Cart Development Team
+ * @copyright Copyright 2003-2017 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Modified in v1.5.4 $
+ * @version $Id: Author: DrByte  July 2017 Modified in v1.5.5f $
  */
 /**
  * Authorize.net echeck Payment Module
@@ -340,7 +340,7 @@ class authorizenet_echeck extends base {
                          'x_encap_char' => $this->encapChar,  // The divider to encapsulate response fields
                          'x_version' => '3.1',  // 3.1 is required to use CVV codes
                          'x_type' => MODULE_PAYMENT_AUTHORIZENET_ECHECK_AUTHORIZATION_TYPE == 'Authorize' ? 'AUTH_ONLY': 'AUTH_CAPTURE',
-                         'x_amount' => number_format($order->info['total'], 2),
+                         'x_amount' => round($order->info['total'], 2),
                          'x_currency_code' => $order->info['currency'],
                          'x_method' => 'ECHECK',
                          'x_bank_aba_code' => $_POST['bank_aba_code'],
@@ -374,9 +374,9 @@ class authorizenet_echeck extends base {
                          'x_description' => $description,
                          'x_customer_ip' => zen_get_ip_address(),
                          'x_po_num' => date('M-d-Y h:i:s'), //$order->info['po_number'],
-                         'x_freight' => number_format((float)$order->info['shipping_cost'],2),
+                         'x_freight' => round((float)$order->info['shipping_cost'],2),
                          'x_tax_exempt' => 'FALSE', /* 'TRUE' or 'FALSE' */
-                         'x_tax' => number_format((float)$order->info['tax'],2),
+                         'x_tax' => round((float)$order->info['tax'],2),
                          'x_duty' => '0',
 
                          // Additional Merchant-defined variables go here
@@ -399,7 +399,7 @@ class authorizenet_echeck extends base {
     // force conversion to USD
     if ($order->info['currency'] != 'USD') {
       global $currencies;
-      $submit_data['x_amount'] = number_format($order->info['total'] * $currencies->get_value('USD'), 2);
+      $submit_data['x_amount'] = round($order->info['total'] * $currencies->get_value('USD'), 2);
       $submit_data['x_currency_code'] = 'USD';
       unset($submit_data['x_tax'], $submit_data['x_freight']);
     }
@@ -443,19 +443,6 @@ class authorizenet_echeck extends base {
     $sql = $db->bindVars($sql, ':orderStatus', $this->order_status, 'integer');
     $db->Execute($sql);
     return false;
-  }
-  /**
-    * Build admin-page components
-    *
-    * @param int $zf_order_id
-    * @return string
-    */
-  function RENAME_admin_notification($zf_order_id) {
-    global $db;
-    $output = '';
-    $echeckdata->fields = array();
-    require(DIR_FS_CATALOG . DIR_WS_MODULES . 'payment/authorizenet/authorizenet_admin_notification.php');
-    return $output;
   }
   /**
    * Used to display error message details
@@ -543,7 +530,7 @@ class authorizenet_echeck extends base {
     }
 
     // set URL
-    $url = 'https://secure.authorize.net/gateway/transact.dll';
+    $url = 'https://secure2.authorize.net/gateway/transact.dll';
     $devurl = 'https://test.authorize.net/gateway/transact.dll';
     $dumpurl = 'https://developer.authorize.net/param_dump.asp';
     $certurl = 'https://certification.authorize.net/gateway/transact.dll';
@@ -589,18 +576,18 @@ class authorizenet_echeck extends base {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-//   curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); // NOTE: Leave commented-out! or set to TRUE!  This should NEVER be set to FALSE in production!!!!
-//   curl_setopt($ch, CURLOPT_CAINFO, '/local/path/to/cacert.pem'); // for offline testing, this file can be obtained from http://curl.haxx.se/docs/caextract.html ... should never be used in production!
-    if (CURL_PROXY_REQUIRED == 'True') {
-      $this->proxy_tunnel_flag = (defined('CURL_PROXY_TUNNEL_FLAG') && strtoupper(CURL_PROXY_TUNNEL_FLAG) == 'FALSE') ? false : true;
-      curl_setopt ($ch, CURLOPT_HTTPPROXYTUNNEL, $this->proxy_tunnel_flag);
-      curl_setopt ($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-      curl_setopt ($ch, CURLOPT_PROXY, CURL_PROXY_SERVER_DETAILS);
-    }
 
     $this->authorize = curl_exec($ch);
     $this->commError = curl_error($ch);
     $this->commErrNo = curl_errno($ch);
+
+    if ($this->commErrNo == 35) {
+      trigger_error('ALERT: Could not process Authorize.net echeck transaction via normal CURL communications. Your server is encountering connection problems using TLS 1.2 ... because your hosting company cannot autonegotiate a secure protocol with modern security protocols. We will try the transaction again, but this is resulting in a very long delay for your customers, and could result in them attempting duplicate purchases. Get your hosting company to update their TLS capabilities ASAP.', E_USER_NOTICE);
+      curl_setopt($ch, CURLOPT_SSLVERSION, 6); // Using the defined value of 6 instead of CURL_SSLVERSION_TLSv1_2 since these outdated hosts also don't properly implement this constant either.
+      $this->authorize = curl_exec($ch);
+      $this->commError = curl_error($ch);
+      $this->commErrNo = curl_errno($ch);
+    }
 
     $this->commInfo = @curl_getinfo($ch);
     curl_close ($ch);
@@ -692,11 +679,7 @@ class authorizenet_echeck extends base {
    * Check and fix table structure if appropriate
    */
   function tableCheckup() {
-    global $db, $sniffer;
-    $fieldOkay1 = (method_exists($sniffer, 'field_type')) ? $sniffer->field_type(TABLE_AUTHORIZENET, 'transaction_id', 'bigint(20)', true) : -1;
-    if ($fieldOkay1 !== true) {
-      $db->Execute("ALTER TABLE " . TABLE_AUTHORIZENET . " CHANGE transaction_id transaction_id bigint(20) default NULL");
-    }
+    return;
   }
   /**
    * Used to submit a refund for a given transaction.
@@ -733,7 +716,7 @@ class authorizenet_echeck extends base {
     if ($proceedToRefund) {
       $submit_data = array('x_type' => 'CREDIT',
                            'x_card_num' => trim($_POST['cc_number']),
-                           'x_amount' => number_format($refundAmt, 2),
+                           'x_amount' => round($refundAmt, 2),
                            'x_trans_id' => trim($_POST['trans_id'])
                            );
       unset($response);
@@ -805,7 +788,7 @@ class authorizenet_echeck extends base {
       unset($submit_data);
       $submit_data = array(
                            'x_type' => 'PRIOR_AUTH_CAPTURE',
-                           'x_amount' => number_format($captureAmt, 2),
+                           'x_amount' => round($captureAmt, 2),
                            'x_trans_id' => strip_tags(trim($_POST['captauthid'])),
 //                         'x_invoice_num' => $new_order_id,
 //                         'x_po_num' => $order->info['po_number'],

@@ -1,10 +1,10 @@
 <?php
 /**
  * @package admin
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: ajeh  Modified in v1.5.5 $
+ * @version $Id: Author: zcwilt  Fri Apr 22 12:16:32 2016 -0500 Modified in v1.5.5 $
  */
 
 ////
@@ -438,7 +438,7 @@
         return false;
       }
     } else {
-      if (($value != '') && (strtolower($value) != 'null') && (strlen(trim($value)) > 0)) {
+      if ($value != '' && $value != 'NULL' && strlen(trim($value)) > 0) {
         return true;
       } else {
         return false;
@@ -610,23 +610,29 @@
     }
   }
 
-  function zen_get_uprid($prid, $params) {
+function zen_get_uprid($prid, $params)
+{
     $uprid = $prid;
-    if ( (is_array($params)) && (!strstr($prid, '{')) ) {
-      while (list($option, $value) = each($params)) {
-        $uprid = $uprid . '{' . $option . '}' . $value;
-      }
+    if (is_array($params) && strpos($prid, ':') === false) {
+        foreach ($params as $option => $value) {
+            if (is_array($value)) {
+                foreach ($value as $opt => $val) {
+                    $uprid .= ('{' . $option . '}' . trim($opt));
+                }
+            } else {
+                $uprid .= ('{' . $option . '}' . trim($value));
+            }
+        }
+        $uprid = $prid . ':' . md5($uprid);
     }
-
     return $uprid;
-  }
+}
 
-
-  function zen_get_prid($uprid) {
-    $pieces = explode('{', $uprid);
-
+function zen_get_prid($uprid)
+{
+    $pieces = explode(':', $uprid);
     return $pieces[0];
-  }
+}
 
 
   function zen_get_languages() {
@@ -975,7 +981,7 @@
 // Function to read in text area in admin
  function zen_cfg_textarea_small($text, $key = '') {
     $name = (($key) ? 'configuration[' . $key . ']' : 'configuration_value');
-    return zen_draw_textarea_field($name, false, 35, 1, htmlspecialchars($text, ENT_COMPAT, CHARSET, FALSE), 'class="noEditor"');
+    return zen_draw_textarea_field($name, false, 35, 1, htmlspecialchars($text, ENT_COMPAT, CHARSET, FALSE), 'class="noEditor" autofocus');
   }
 
 
@@ -1101,8 +1107,8 @@
   }
 
 ////
-// Retreive server information
-  function zen_get_system_information() {
+// Collect server information
+  function zen_get_system_information($privacy = false) {
     global $db;
 
     // determine database size stats
@@ -1141,7 +1147,6 @@
     $uptime = (DISPLAY_SERVER_UPTIME == 'true') ? 'Unsupported' : 'Disabled/Unavailable';
 
     // check to see if "exec()" is disabled in PHP -- if not, get additional info via command line
-    $php_disabled_functions = '';
     $exec_disabled = false;
     $php_disabled_functions = @ini_get("disable_functions");
     if ($php_disabled_functions != '') {
@@ -1161,7 +1166,10 @@
       }
     }
 
-    return array('date' => zen_datetime_short(date('Y-m-d H:i:s')),
+    $timezone = date_default_timezone_get();
+
+    $systemInfo = array('date' => zen_datetime_short(date('Y-m-d H:i:s')),
+                 'timezone' => $timezone,
                  'system' => $system,
                  'kernel' => $kernel,
                  'host' => $host,
@@ -1185,7 +1193,13 @@
                  'mysql_slow_query_log_status' => $mysql_slow_query_log_status,
                  'mysql_slow_query_log_file' => $mysql_slow_query_log_file,
                  );
-  }
+
+    if ($privacy) {
+        unset ($systemInfo['mysql_slow_query_log_file']);
+    }
+
+    return $systemInfo;
+}
 
   function zen_generate_category_path($id, $from = 'category', $categories_array = '', $index = 0) {
     global $db;
@@ -2015,7 +2029,7 @@ while (!$chk_sale_categories_all->EOF) {
     }
     $date_selector .= '</select>';
     $date_selector .= '<select name="'. $prefix .'_year">';
-    for ($i=2001;$i<2019;$i++){
+    for ($i = date('Y') - 5, $j = date('Y') + 11; $i < $j; $i++) {
       $date_selector .= '<option value="' . $i . '"';
       if ($i==$year) $date_selector .= 'selected';
       $date_selector .= '>' . $i . '</option>';
@@ -2135,6 +2149,43 @@ while (!$chk_sale_categories_all->EOF) {
     }
   }
 
+
+/*
+ *  Check if option name is not expected to have an option value (ie. text field, or File upload field)
+ */
+  function zen_option_name_base_expects_no_values($option_name_id) {
+    global $db, $zco_notifier;
+    $option_name_no_value = true;
+    if (!is_array($option_name_id)) {
+      $option_name_id = array($option_name_id);
+    }
+    $sql = "SELECT products_options_type FROM " . TABLE_PRODUCTS_OPTIONS . " WHERE products_options_id :option_name_id:";
+    if (sizeof($option_name_id) > 1 ) {
+      $sql2 = 'in (';
+      foreach($option_name_id as $option_id) {
+        $sql2 .= ':option_id:,';
+        $sql2 = $db->bindVars($sql2, ':option_id:', $option_id, 'integer');
+      }
+      $sql2 = rtrim($sql2, ','); // Need to remove the final comma off of the above.
+      $sql2 = ')';
+    } else {
+      $sql2 = ' = :option_id:';
+      $sql2 = $db->bindVars($sql2, ':option_id:', $option_name_id[0], 'integer');
+    }
+    $sql = $db->bindVars($sql, ':option_name_id:', $sql2, 'noquotestring');
+    $sql_result = $db->Execute($sql);
+    foreach($sql_result as $opt_type) {
+      $test_var = true; // Set to false in observer if the name is not supposed to have a value associated
+      $zco_notifier->notify('FUNCTIONS_LOOKUPS_OPTION_NAME_NO_VALUES_OPT_TYPE', $opt_type, $test_var);
+      if ($test_var && $opt_type['products_options_type'] != PRODUCTS_OPTIONS_TYPE_TEXT && $opt_type['products_options_type'] != PRODUCTS_OPTIONS_TYPE_FILE) {
+        $option_name_no_value = false;
+        break;
+      }
+    }
+    return $option_name_no_value;
+  }
+
+
 function zen_copy_products_attributes($products_id_from, $products_id_to) {
   global $db;
   global $messageStack;
@@ -2202,7 +2253,8 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
       } else {
         if ($add_attribute == true) {
           // New attribute - insert it
-          $db->Execute("insert into " . TABLE_PRODUCTS_ATTRIBUTES . " (products_attributes_id, products_id, options_id, options_values_id, options_values_price, price_prefix, products_options_sort_order, product_attribute_is_free, products_attributes_weight, products_attributes_weight_prefix, attributes_display_only, attributes_default, attributes_discounted, attributes_image, attributes_price_base_included, attributes_price_onetime, attributes_price_factor, attributes_price_factor_offset, attributes_price_factor_onetime, attributes_price_factor_onetime_offset, attributes_qty_prices, attributes_qty_prices_onetime, attributes_price_words, attributes_price_words_free, attributes_price_letters, attributes_price_letters_free, attributes_required) values (0, '" . (int)$products_id_to . "',
+          $db->Execute("insert into " . TABLE_PRODUCTS_ATTRIBUTES . " (products_id, options_id, options_values_id, options_values_price, price_prefix, products_options_sort_order, product_attribute_is_free, products_attributes_weight, products_attributes_weight_prefix, attributes_display_only, attributes_default, attributes_discounted, attributes_image, attributes_price_base_included, attributes_price_onetime, attributes_price_factor, attributes_price_factor_offset, attributes_price_factor_onetime, attributes_price_factor_onetime_offset, attributes_qty_prices, attributes_qty_prices_onetime, attributes_price_words, attributes_price_words_free, attributes_price_letters, attributes_price_letters_free, attributes_required)
+                        values ('" . (int)$products_id_to . "',
           '" . $products_copy_from->fields['options_id'] . "',
           '" . $products_copy_from->fields['options_values_id'] . "',
           '" . $products_copy_from->fields['options_values_price'] . "',
@@ -2572,23 +2624,18 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
  * (does not validate download filename)
  */
   function zen_has_product_attributes_downloads_status($products_id) {
-    global $db;
-    if (DOWNLOAD_ENABLED == 'true') {
-      $download_display_query_raw ="select pa.products_attributes_id, pad.products_attributes_filename
-                                    from " . TABLE_PRODUCTS_ATTRIBUTES . " pa, " . TABLE_PRODUCTS_ATTRIBUTES_DOWNLOAD . " pad
-                                    where pa.products_id='" . (int)$products_id . "'
-                                      and pad.products_attributes_id= pa.products_attributes_id";
-
-      $download_display = $db->Execute($download_display_query_raw);
-      if ($download_display->RecordCount() != 0) {
-        $valid_downloads = false;
-      } else {
-        $valid_downloads = true;
-      }
-    } else {
-      $valid_downloads = false;
+    if (!defined('DOWNLOAD_ENABLED') || DOWNLOAD_ENABLED != 'true') {
+      return false;
     }
-    return $valid_downloads;
+
+    $query = "select pad.products_attributes_id
+              from " . TABLE_PRODUCTS_ATTRIBUTES . " pa
+              inner join " . TABLE_PRODUCTS_ATTRIBUTES_DOWNLOAD . " pad
+              on pad.products_attributes_id = pa.products_attributes_id
+              where pa.products_id = " . (int) $products_id;
+
+    global $db;
+    return ($db->Execute($query)->RecordCount() > 0);
   }
 
 /**
@@ -3245,9 +3292,9 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
  * the value of the configuration_key is then returned
  * NOTE: keys are looked up first in the product_type_layout table and if not found looked up in the configuration table.
  */
-    function zen_get_show_product_switch($lookup, $field, $suffix= 'SHOW_', $prefix= '_INFO', $field_prefix= '_', $field_suffix='') {
+    function zen_get_show_product_switch($lookup, $field, $prefix= 'SHOW_', $suffix= '_INFO', $field_prefix= '_', $field_suffix='') {
       global $db;
-      $zv_key = zen_get_show_product_switch_name($lookup, $field, $suffix, $prefix, $field_prefix, $field_suffix);
+      $zv_key = zen_get_show_product_switch_name($lookup, $field, $prefix, $suffix, $field_prefix, $field_suffix);
       $sql = "select configuration_key, configuration_value from " . TABLE_PRODUCT_TYPE_LAYOUT . " where configuration_key='" . zen_db_input($zv_key) . "'";
       $zv_key_value = $db->Execute($sql);
 //echo 'I CAN SEE - look ' . $lookup . ' - field ' . $field . ' - key ' . $zv_key . ' value ' . $zv_key_value->fields['configuration_value'] .'<br>';
@@ -3268,7 +3315,7 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
 /**
  * return switch name
  */
-    function zen_get_show_product_switch_name($lookup, $field, $suffix= 'SHOW_', $prefix= '_INFO', $field_prefix= '_', $field_suffix='') {
+    function zen_get_show_product_switch_name($lookup, $field, $prefix= 'SHOW_', $suffix= '_INFO', $field_prefix= '_', $field_suffix='') {
       global $db;
       $type_lookup = 0;
       $type_handler = '';
@@ -3279,7 +3326,7 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
       $sql = "select type_handler from " . TABLE_PRODUCT_TYPES . " where type_id = '" . (int)$type_lookup . "'";
       $result = $db->Execute($sql);
       if (!$result->EOF) $type_handler = $result->fields['type_handler'];
-      $zv_key = strtoupper($suffix . $type_handler . $prefix . $field_prefix . $field . $field_suffix);
+      $zv_key = strtoupper($prefix . $type_handler . $suffix . $field_prefix . $field . $field_suffix);
 
       return $zv_key;
     }
@@ -3420,6 +3467,9 @@ function zen_copy_products_attributes($products_id_from, $products_id_to) {
  * replacement for fmod to manage values < 1
  */
   function fmod_round($x, $y) {
+    if ($y == 0) {
+      return 0;
+    }
     $x = strval($x);
     $y = strval($y);
     $zc_round = ($x*1000)/($y*1000);
@@ -3759,3 +3809,35 @@ function get_logs_data($maxToList = 'count') {
   $logs = zen_sort_array($logs, 'unixtime', SORT_DESC);
   return $logs;
 }
+
+/**
+ * function to override PHP's is_writable() which can occasionally be unreliable due to O/S and F/S differences
+ * attempts to open the specified file for writing. Returns true if successful, false if not.
+ * if a directory is specified, uses PHP's is_writable() anyway
+ *
+ * @var string
+ * @return boolean
+ */
+  function is__writeable($filepath, $make_unwritable = true) {
+    if (is_dir($filepath)) return is_writable($filepath);
+    $fp = @fopen($filepath, 'a');
+    if ($fp) {
+      @fclose($fp);
+      if ($make_unwritable) set_unwritable($filepath);
+      $fp = @fopen($filepath, 'a');
+      if ($fp) {
+        @fclose($fp);
+        return true;
+      }
+    }
+    return false;
+  }
+/**
+ * attempts to make the specified file read-only
+ *
+ * @var string
+ * @return boolean
+ */
+  function set_unwritable($filepath) {
+    return @chmod($filepath, 0444);
+  }

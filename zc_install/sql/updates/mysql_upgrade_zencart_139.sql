@@ -3,10 +3,10 @@
 # *
 # * @package Installer
 # * @access private
-# * @copyright Copyright 2003-2010 Zen Cart Development Team
+# * @copyright Copyright 2003-2016 Zen Cart Development Team
 # * @copyright Portions Copyright 2003 osCommerce
 # * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
-# * @version $Id: mysql_upgrade_zencart_138_to_139.sql 18235 2010-11-23 22:41:05Z drbyte $
+# * @version $Id: Author: zcwilt  Wed Sep 23 20:04:38 2015 +0100 New in v1.5.5 $
 #
 
 ############ IMPORTANT INSTRUCTIONS ###############
@@ -63,7 +63,7 @@ update orders set cc_cvv = '' where cc_cvv != '' and orders_status != 1;
 # force USPS module into production mode if not already
 UPDATE configuration SET configuration_value = 'production' where configuration_key = 'MODULE_SHIPPING_USPS_SERVER';
 
-ALTER TABLE authorizenet CHANGE transaction_id transaction_id bigint(20) default NULL;
+#ALTER TABLE authorizenet CHANGE transaction_id transaction_id bigint(20) default NULL;
 ALTER TABLE paypal CHANGE COLUMN notify_version notify_version varchar(6) NOT NULL default '';
 
 ALTER TABLE orders_products ADD INDEX idx_prod_id_orders_id_zen (products_id,orders_id);
@@ -72,10 +72,10 @@ ALTER TABLE orders ADD INDEX idx_cust_id_orders_id_zen (customers_id,orders_id);
 # fix counter_history race condition
 #NEXT_X_ROWS_AS_ONE_COMMAND:5
 CREATE TABLE counter_history_clean as
-SELECT startdate, counter, session_counter FROM counter_history WHERE 1 GROUP BY startdate, counter, session_counter;
+SELECT startdate, counter, session_counter
+FROM counter_history WHERE 1 GROUP BY startdate, counter, session_counter;
 DROP TABLE counter_history;
-RENAME TABLE counter_history_clean
-TO counter_history;
+RENAME TABLE counter_history_clean TO counter_history;
 
 ALTER TABLE counter_history ADD PRIMARY KEY(startdate);
 

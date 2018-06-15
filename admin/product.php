@@ -1,10 +1,10 @@
 <?php
 /**
  * @package admin
- * @copyright Copyright 2003-2011 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: product.php 19330 2011-08-07 06:32:56Z drbyte $
+ * @version $Id: Author: DrByte  Fri Feb 26 20:52:53 2016 -0500 Modified in v1.5.5 $
  */
 
   require('includes/application_top.php');
@@ -12,6 +12,8 @@
   require(DIR_WS_MODULES . 'prod_cat_header_code.php');
 
   $action = (isset($_GET['action']) ? $_GET['action'] : '');
+
+  $zco_notifier->notify('NOTIFY_BEGIN_ADMIN_PRODUCTS', $action);
 
   if (zen_not_null($action)) {
     switch ($action) {
@@ -31,7 +33,6 @@
       } else {
         $delete_linked = 'true';
       }
-      $product_type = zen_get_products_type($_POST['products_id']);
         if (file_exists(DIR_WS_MODULES . $zc_products->get_handler($product_type) . '/delete_product_confirm.php')) {
           require(DIR_WS_MODULES . $zc_products->get_handler($product_type) . '/delete_product_confirm.php');
          } else {

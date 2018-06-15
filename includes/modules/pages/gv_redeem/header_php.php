@@ -3,10 +3,10 @@
  * GV redeem
  *
  * @package page
- * @copyright Copyright 2003-2015 Zen Cart Development Team
+ * @copyright Copyright 2003-2016 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: header_php.php drbyte  Modified in v1.5.5 $
+ * @version $Id: Author: Zen4All  Wed Dec 9 10:38:02 2015 +0100 Modified in v1.5.5 $
  */
 $zco_notifier->notify('NOTIFY_HEADER_START_GV_REDEEM');
 
@@ -17,7 +17,7 @@ $_GET['gv_no'] = zen_sanitize_string(trim($_GET['gv_no']));
 if (!$_SESSION['customer_id']) {
   $_SESSION['navigation']->set_snapshot();
   $messageStack->add_session('login', ERROR_GV_CREATE_ACCOUNT, 'error');
-  zen_redirect(zen_href_link(FILENAME_LOGIN, (isset($_GET['gv_no']) ? 'gv_no=' . preg_replace('/[^0-9.,%]/', '', $_GET['gv_no'] : '') ), 'SSL'));
+  zen_redirect(zen_href_link(FILENAME_LOGIN, (isset($_GET['gv_no']) ? 'gv_no=' . preg_replace('/[^0-9.,%]/', '', $_GET['gv_no']) : '' ), 'SSL'));
 }
 // check for a voucher number in the url
 if (isset($_GET['gv_no'])) {
